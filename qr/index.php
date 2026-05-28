@@ -12,12 +12,14 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 650px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
         h1 { margin-top: 0; color: #111; font-size: 24px; }
-        #canvas-wrapper { margin: 25px auto; display: inline-block; background: #fff; padding: 15px; border: 1px solid #e1e4e6; border-radius: 6px; }
+        #canvas-wrapper { margin: 25px auto; display: inline-block; background: #fff; padding: 15px; border: 1px solid #e1e4e6; border-radius: 6px; min-height: 500px; min-width: 500px; position: relative;}
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; }
         button { background: #0073aa; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; transition: background 0.2s; }
         button:hover { background: #005177; }
         button.secondary { background: #e1e4e6; color: #333; }
         button.secondary:hover { background: #d1d4d6; }
+        button.success { background: #46b450; border-bottom: 3px solid #239230; font-size: 16px; padding: 12px 28px; }
+        button.success:hover { background: #2e9b3d; }
         .admin-panel { margin-top: 40px; border-top: 2px dashed #e1e4e6; padding-top: 25px; text-align: left; }
         .admin-panel h3 { margin-top: 0; color: #444; }
         .form-group { margin-bottom: 15px; }
@@ -35,6 +37,10 @@
 
     <div id="canvas-wrapper">
         <canvas id="qrCanvas" width="500" height="500"></canvas>
+    </div>
+
+    <div style="margin: 10px 0 25px 0;">
+        <button class="success" onclick="renderBrandedQR()">⚡ Generate / Refresh QR Code</button>
     </div>
 
     <div class="btn-group">
@@ -65,12 +71,12 @@
 </div>
 
 <script>
-    // Grab configurations from current execution string contextual lookups
+    // Grab configurations from URL variables
     const urlParams = new URLSearchParams(window.location.search);
     const shortUrl = urlParams.get('content') || window.location.href;
     document.getElementById('target-url-text').innerText = "Short Link Target: " + shortUrl;
 
-    // Load initialization parameters from browser session caches
+    // Load initialization parameters from localStorage cache
     if(localStorage.getItem('qr_body_hex')) document.getElementById('bodyColorInput').value = localStorage.getItem('qr_body_hex');
     if(localStorage.getItem('qr_eye_hex')) document.getElementById('eyeColorInput').value = localStorage.getItem('qr_eye_hex');
     let savedLogoData = localStorage.getItem('qr_logo_base64') || '';
@@ -80,7 +86,7 @@
         preview.style.display = 'block';
     }
 
-    // Initialize compilation tasks
+    // Run layout render on boot up
     window.onload = function() {
         renderBrandedQR();
     };
@@ -95,7 +101,9 @@
             const preview = document.getElementById('logoPreview');
             preview.src = savedLogoData;
             preview.style.display = 'block';
-            renderBrandedQR();
+            
+            // Give browser a microsecond breathing window to settle properties, then draw
+            setTimeout(renderBrandedQR, 100);
         };
         reader.readAsDataURL(file);
     }
@@ -104,6 +112,59 @@
         localStorage.setItem('qr_body_hex', document.getElementById('bodyColorInput').value);
         localStorage.setItem('qr_eye_hex', document.getElementById('eyeColorInput').value);
         renderBrandedQR();
+    }
+
+    function drawBaseMatrix(ctx, canvas, moduleCount, modules, cellSize, bodyHex, eyeHex) {
+        // Step 1: Render standard data modules mapping lines
+        ctx.fillStyle = bodyHex;
+        for (let row = 0; row < moduleCount; row++) {
+            for (let col = 0; col < moduleCount; col++) {
+                if (modules[row][col]) {
+                    // Skip tracking corner eye regions coordinates
+                    if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
+                        continue;
+                    }
+                    // Skip execution center space for logo branding blocks
+                    const centerStart = Math.floor(moduleCount * 0.36);
+                    const centerEnd = Math.ceil(moduleCount * 0.64);
+                    if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) {
+                        continue;
+                    }
+                    
+                    // Render smooth data dots
+                    ctx.beginPath();
+                    ctx.arc((col * cellSize) + (cellSize / 2), (row * cellSize) + (cellSize / 2), (cellSize / 2) * 0.85, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Step 2: Draw Tracking Corner Eyes with Custom Color Mapping
+        const eyeCoordinates = [
+            { x: 0, y: 0 },                                  // Top Left
+            { x: (moduleCount - 7) * cellSize, y: 0 },       // Top Right
+            { x: 0, y: (moduleCount - 7) * cellSize }        // Bottom Left
+        ];
+
+        eyeCoordinates.forEach(pos => {
+            // Draw Outer Ring Frame
+            ctx.fillStyle = eyeHex;
+            ctx.beginPath();
+            ctx.roundRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize, cellSize * 1.5);
+            ctx.fill();
+
+            // Internal Isolation Knockout Box Area
+            ctx.fillStyle = "#FFFFFF";
+            ctx.beginPath();
+            ctx.roundRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize, cellSize * 0.8);
+            ctx.fill();
+
+            // Core Tracking Pupil Solid Box Area
+            ctx.fillStyle = bodyHex;
+            ctx.beginPath();
+            ctx.roundRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize, cellSize * 0.4);
+            ctx.fill();
+        });
     }
 
     function renderBrandedQR() {
@@ -127,73 +188,32 @@
         const moduleCount = modules.length;
         const cellSize = canvas.width / moduleCount;
 
-        // Render standard functional modules mapping lines
-        ctx.fillStyle = bodyHex;
-        for (let row = 0; row < moduleCount; row++) {
-            for (let col = 0; col < moduleCount; col++) {
-                if (modules[row][col]) {
-                    // Skip layout coordinates calculation properties inside the tracking corner eye regions
-                    if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
-                        continue;
-                    }
-                    // Skip execution center bounds to clear space layout overlays for center branding blocks
-                    const centerStart = Math.floor(moduleCount * 0.38);
-                    const centerEnd = Math.ceil(moduleCount * 0.62);
-                    if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) {
-                        continue;
-                    }
-                    
-                    // Render smooth data modules matching the rounded aesthetic of the logo
-                    ctx.beginPath();
-                    ctx.arc((col * cellSize) + (cellSize / 2), (row * cellSize) + (cellSize / 2), (cellSize / 2) * 0.85, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
-            }
-        }
+        // Draw structural elements
+        drawBaseMatrix(ctx, canvas, moduleCount, modules, cellSize, bodyHex, eyeHex);
 
-        // Draw Tracking Corner Eyes with Custom Color Mapping
-        const eyeCoordinates = [
-            { x: 0, y: 0 },                                  // Top Left
-            { x: (moduleCount - 7) * cellSize, y: 0 },       // Top Right
-            { x: 0, y: (moduleCount - 7) * cellSize }        // Bottom Left
-        ];
-
-        eyeCoordinates.forEach(pos => {
-            // Draw Outer Ring Frame
-            ctx.fillStyle = eyeHex;
-            ctx.beginPath();
-            ctx.roundRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize, cellSize * 1.5);
-            ctx.fill();
-
-            // Internal Isolation Knockout Box Area
-            ctx.fillStyle = "#FFFFFF";
-            ctx.beginPath();
-            ctx.roundRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize, cellSize * 0.8);
-            ctx.fill();
-
-            // Core Tracking Pupil Solid Square Box Area
-            ctx.fillStyle = bodyHex;
-            ctx.beginPath();
-            ctx.roundRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize, cellSize * 0.4);
-            ctx.fill();
-        });
-
-        // Inject Brand Logo Center Mark Layer
+        // Step 3: Handle logo compilation synchronously using an event framework callback hook
         if (savedLogoData) {
             const logoImg = new Image();
             logoImg.src = savedLogoData;
+            
             logoImg.onload = function() {
-                const targetSize = canvas.width * 0.22;
+                const targetSize = canvas.width * 0.24;
                 const lx = (canvas.width - targetSize) / 2;
                 const ly = (canvas.height - targetSize) / 2;
 
                 // Clear background box safely underneath image mapping layers
                 ctx.fillStyle = "#FFFFFF";
                 ctx.beginPath();
-                ctx.roundRect(lx - 4, ly - 4, targetSize + 8, targetSize + 8, 6);
+                ctx.roundRect(lx - 6, ly - 6, targetSize + 12, targetSize + 12, 6);
                 ctx.fill();
 
                 ctx.drawImage(logoImg, lx, ly, targetSize, targetSize);
+            };
+            
+            // Fallback patch link in case reader state caches fail on hot load calls
+            logoImg.onerror = function() {
+                console.log("Logo rendering dropped. Refreshing base matrix.");
+                drawBaseMatrix(ctx, canvas, moduleCount, modules, cellSize, bodyHex, eyeHex);
             };
         }
     }
