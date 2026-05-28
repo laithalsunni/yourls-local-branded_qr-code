@@ -78,12 +78,10 @@
     const logEl = document.getElementById('debug-log');
     function log(msg) { logEl.innerText = "Status Log: " + msg; console.log(msg); }
 
-    // Read target URL params passed down by YOURLS (?url=...)
     const urlParams = new URLSearchParams(window.location.search);
     let shortUrl = urlParams.get('url') || urlParams.get('content') || window.location.href;
     document.getElementById('target-url-text').innerText = "Short Link Target: " + shortUrl;
 
-    // Local storage restoration values
     if(localStorage.getItem('qr_body_hex')) document.getElementById('bodyColorInput').value = localStorage.getItem('qr_body_hex');
     if(localStorage.getItem('qr_eye_hex')) document.getElementById('eyeColorInput').value = localStorage.getItem('qr_eye_hex');
     
@@ -94,7 +92,6 @@
         preview.style.display = 'block';
     }
 
-    // Interactive event triggers
     document.getElementById('logoInput').addEventListener('change', handleLogoUpload);
     document.getElementById('bodyColorInput').addEventListener('input', applyBrandingChanges);
     document.getElementById('eyeColorInput').addEventListener('input', applyBrandingChanges);
@@ -144,21 +141,32 @@
         buffer.innerHTML = '';
 
         try {
-            // Initialize using the native qrcode.min.js library configuration
+            // FIX: Use fallback direct integer '3' instead of structural object lookups for ECL High
             const qrInstance = new QRCode(buffer, {
                 text: shortUrl,
                 width: 256,
                 height: 256,
-                correctLevel: QRCode.CorrectLevel.H // Enforce high error correction
+                correctLevel: 3 
             });
 
-            // Extract the core data matrix modules natively mapped by this engine type
-            const modules = qrInstance._oQRCode.modules;
+            // Locate module structural layout regardless of internal framework namespaces
+            let modules = null;
+            if (qrInstance._oQRCode && qrInstance._oQRCode.modules) {
+                modules = qrInstance._oQRCode.modules;
+            } else if (qrInstance.qrcode && qrInstance.qrcode.modules) {
+                modules = qrInstance.qrcode.modules;
+            }
+
+            if (!modules) {
+                log("❌ Matrix Extraction Error: Structure mapping incompatible.");
+                return;
+            }
+
             const moduleCount = modules.length;
             const cellSize = canvas.width / moduleCount;
             log("Data matrix compiled successfully (" + moduleCount + "x" + moduleCount + "). Drawing elements...");
 
-            // 1. Paint customized rounded matrix body dots
+            // 1. Paint rounded body data dots
             ctx.fillStyle = bodyHex;
             for (let row = 0; row < moduleCount; row++) {
                 for (let col = 0; col < moduleCount; col++) {
