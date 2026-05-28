@@ -1,68 +1,61 @@
 /**
- * Branded QR Engine - Ironclad Administrative DOM Hook Script
+ * Branded QR Engine - Administrative UI Hook Script
  */
 (function($) {
     function inject_branded_qr_interface() {
-        // Prevent execution if it's already injected on the screen
-        if ($('#branded-qr-hook-block').length > 0) {
+        // Find sharebox target container panels
+        var $shareboxes = $("#shareboxes");
+        if (!$shareboxes.length) {
             return;
         }
 
-        // Try standard share page input first, then fall back to the dynamic dashboard creator input
-        var generatedShortUrl = $('#copylink').attr('value') || $('#share_link').attr('value');
-        
-        // If the box exists but has no link value yet, skip and wait
+        // Fetch values from either standalone page inputs or ajax dashboard panels
+        var generatedShortUrl = $('#copylink').val() || $('#share_link').val();
         if (!generatedShortUrl) {
             return;
         }
 
-        // Target your custom interactive dashboard studio URL
-        var customizedStudioUrl = BRANDED_QR_WEBROOT + '?url=' + encodeURIComponent(generatedShortUrl);
+        // Prevent duplicate generation if already injected on the screen
+        if ($('#branded-qr-hook-block').length > 0) {
+            // Check if the link has changed (i.e., user shortened another link sequentially)
+            var currentLinkedUrl = $('#branded-qr-hook-block a').data('shorturl');
+            if (currentLinkedUrl === generatedShortUrl) {
+                return; // Everything is correct and up-to-date
+            } else {
+                $('#branded-qr-hook-block').remove(); // Link mismatch, strip and rebuild
+            }
+        }
+
+        // Determine destination URL
+        var studioPath = window.BRANDED_QR_WEBROOT || (window.location.origin + '/qr/index.html');
+        var customizedStudioUrl = studioPath + '?url=' + encodeURIComponent(generatedShortUrl);
         
-        // Use an un-throttled public global fallback engine for the admin dashboard thumbnail preview
+        // QR image placeholder container
         var placeholderThumbUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent(generatedShortUrl);
         
-        var htmlPayload = "" +
+        var htmlPayload = 
             "<div id='branded-qr-hook-block' class='branded-share-qr share' style='float: right; text-align: center; margin-left: 15px;'>" +
-            "  <a href='" + customizedStudioUrl + "' title='⚡ Click to customize and brand this QR Code!' target='_blank' style='text-decoration: none; display: block;'>" +
+            "  <a href='" + customizedStudioUrl + "' data-shorturl='" + generatedShortUrl + "' title='⚡ Click to customize and brand this QR Code!' target='_blank' style='text-decoration: none; display: block;'>" +
             "    <img src='" + placeholderThumbUrl + "' alt='Branded QR Studio' style='width: 100px; height: 100px; border: 1px solid #e1e4e6; border-radius: 4px; padding: 4px; background: #fff;' />" +
-            "    <span style='display:block; font-size:11px; color:#0073aa; font-weight:bold; margin-top:5px;'>⚡ Brand QR Code</span>" +
+            "    <span style='display:block; font-size:11px; color:#0073aa; font-weight:bold; margin-top:5px; text-decoration:none;'>⚡ Brand QR Code</span>" +
             "  </a>" +
             "</div>";
 
-        // Inject straight into the container panel
-        var $shareboxes = $("#shareboxes");
-        if ($shareboxes.length > 0) {  
-            $shareboxes.append(htmlPayload);
-            // Force clear layouts to make sure float wrappers display side-by-side beautifully
-            $shareboxes.css({"display": "block", "overflow": "hidden"});
-            console.log("✔ Branded QR: Extension layout linked successfully.");
-        }
+        $shareboxes.append(htmlPayload);
+        $shareboxes.css({"display": "block", "overflow": "hidden"});
     }
 
-    // --- DOM WATCHDOG ENGINE ---
-    // This constantly observes the webpage's body for the dynamic shareboxes element creation
-    var observer = new MutationObserver(function(mutations) {
-        if ($("#shareboxes").length > 0 && $('#branded-qr-hook-block').length === 0) {
-            // Check if our input fields actually contain string paths before running
-            if ($('#copylink').attr('value') || $('#share_link').attr('value')) {
-                inject_branded_qr_interface();
-            }
-        }
-    });
-
-    // Fire on load, on AJAX events, and initialize the active watchdog observer
+    // Bind seamlessly to DOM load events
     $(document).ready(function() {
         inject_branded_qr_interface();
-        
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
     });
 
+    // Capture standard YOURLS admin panel modifications safely
     $(document).ajaxComplete(function() {
-        setTimeout(inject_branded_qr_interface, 50);
+        inject_branded_qr_interface();
     });
+    
+    // Fallback interval loop running every 500ms to instantly catch dynamic actions
+    setInterval(inject_branded_qr_interface, 500);
 
 })(jQuery);
