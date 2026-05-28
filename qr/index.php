@@ -72,14 +72,15 @@
     </div>
 </div>
 
-<div id="hidden-qr-buffer" style="display:none;"></div>
-
 <script>
     const logEl = document.getElementById('debug-log');
     function log(msg) { logEl.innerText = "Status Log: " + msg; console.log(msg); }
 
     const urlParams = new URLSearchParams(window.location.search);
     let shortUrl = urlParams.get('url') || urlParams.get('content') || window.location.href;
+    
+    // Explicitly cast to string primitive to avoid internal typing errors
+    shortUrl = String(shortUrl);
     document.getElementById('target-url-text').innerText = "Short Link Target: " + shortUrl;
 
     if(localStorage.getItem('qr_body_hex')) document.getElementById('bodyColorInput').value = localStorage.getItem('qr_body_hex');
@@ -137,24 +138,21 @@
             return;
         }
 
-        const buffer = document.getElementById('hidden-qr-buffer');
-        buffer.innerHTML = '';
-
         try {
-            // FIX: Use fallback direct integer '3' instead of structural object lookups for ECL High
-            const qrInstance = new QRCode(buffer, {
-                text: shortUrl,
-                width: 256,
-                height: 256,
-                correctLevel: 3 
+            // FIX: Using the strict keyword 'content' with safe options mapping parameters
+            const qrInstance = new QRCode({
+                content: shortUrl,
+                width: 500,
+                height: 500,
+                ecl: "H"
             });
 
-            // Locate module structural layout regardless of internal framework namespaces
+            // Find modules regardless of internal structural wrapping namespace variants
             let modules = null;
-            if (qrInstance._oQRCode && qrInstance._oQRCode.modules) {
-                modules = qrInstance._oQRCode.modules;
-            } else if (qrInstance.qrcode && qrInstance.qrcode.modules) {
+            if (qrInstance.qrcode && qrInstance.qrcode.modules) {
                 modules = qrInstance.qrcode.modules;
+            } else if (qrInstance._oQRCode && qrInstance._oQRCode.modules) {
+                modules = qrInstance._oQRCode.modules;
             }
 
             if (!modules) {
