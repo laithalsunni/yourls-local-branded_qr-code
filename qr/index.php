@@ -28,6 +28,8 @@
         .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         .form-group input[type="text"] { width: 120px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px; }
         .preview-logo-thumb { max-height: 60px; display: block; margin-top: 8px; background: #f4f6f8; padding: 6px; border-radius: 4px; border: 1px solid #ddd; }
+        .toggle-container { margin: 10px 0; text-align: left; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #e1e4e6; }
+        .toggle-container label { font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body>
@@ -58,6 +60,13 @@
             <label>Upload Brand Logo overlay (PNG/JPG):</label>
             <input type="file" id="logoInput" accept="image/*">
             <img id="logoPreview" class="preview-logo-thumb" style="display:none;" />
+            
+            <div class="toggle-container">
+                <label>
+                    <input type="checkbox" id="autoColorToggle" checked> 
+                    🎨 Auto-update colors matching the uploaded logo palette
+                </label>
+            </div>
         </div>
         
         <div class="form-group">
@@ -79,7 +88,6 @@
     const urlParams = new URLSearchParams(window.location.search);
     let shortUrl = urlParams.get('url') || urlParams.get('content') || window.location.href;
     
-    // Explicitly cast to string primitive to avoid internal typing errors
     shortUrl = String(shortUrl);
     document.getElementById('target-url-text').innerText = "Short Link Target: " + shortUrl;
 
@@ -113,9 +121,66 @@
             preview.src = savedLogoData;
             preview.style.display = 'block';
             log("New logo loaded into browser memory cache.");
-            renderBrandedQR();
+            
+            // Check if auto color matching is enabled
+            if (document.getElementById('autoColorToggle').checked) {
+                extractColorsFromLogo(savedLogoData);
+            } else {
+                renderBrandedQR();
+            }
         };
         reader.readAsDataURL(file);
+    }
+
+    // Dynamic Color Palette Picker Extraction Engine
+    function extractColorsFromLogo(base64Img) {
+        const img = new Image();
+        img.src = base64Img;
+        img.onload = function() {
+            // Create small background buffer canvas to read image pixels quickly
+            const sampleCanvas = document.createElement('canvas');
+            const sampleCtx = sampleCanvas.getContext('2d');
+            sampleCanvas.width = 50;
+            sampleCanvas.height = 50;
+            sampleCtx.drawImage(img, 0, 0, 50, 50);
+            
+            const imgData = sampleCtx.getImageData(0, 0, 50, 50).data;
+            let colors = [];
+            
+            // Collect all non-transparent, non-white, and non-black pixel clusters
+            for (let i = 0; i < imgData.length; i += 16) {
+                const r = imgData[i];
+                const g = imgData[i+1];
+                const b = imgData[i+2];
+                const a = imgData[i+3];
+                
+                if (a > 200) { // Keep solid color pixels
+                    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                    // Filter out pure white backgrounds or extreme dark areas
+                    if (brightness < 240 && brightness > 15) {
+                        colors.push({r, g, b});
+                    }
+                }
+            }
+            
+            if (colors.length >= 2) {
+                // Map out distinct accent color points
+                const toHex = (c) => [c.r, c.g, c.b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+                
+                const primaryColorHex = toHex(colors[0]);
+                const secondaryColorHex = toHex(colors[Math.floor(colors.length / 2)]);
+                
+                // Update interface input values directly
+                document.getElementById('bodyColorInput').value = primaryColorHex;
+                document.getElementById('eyeColorInput').value = secondaryColorHex;
+                
+                localStorage.setItem('qr_body_hex', primaryColorHex);
+                localStorage.setItem('qr_eye_hex', secondaryColorHex);
+                log("🎨 Color palette successfully sampled from your logo image.");
+            }
+            
+            renderBrandedQR();
+        };
     }
 
     function applyBrandingChanges() {
@@ -139,7 +204,6 @@
         }
 
         try {
-            // FIX: Using the strict keyword 'content' with safe options mapping parameters
             const qrInstance = new QRCode({
                 content: shortUrl,
                 width: 500,
@@ -147,7 +211,6 @@
                 ecl: "H"
             });
 
-            // Find modules regardless of internal structural wrapping namespace variants
             let modules = null;
             if (qrInstance.qrcode && qrInstance.qrcode.modules) {
                 modules = qrInstance.qrcode.modules;
@@ -169,11 +232,9 @@
             for (let row = 0; row < moduleCount; row++) {
                 for (let col = 0; col < moduleCount; col++) {
                     if (modules[row][col]) {
-                        // Skip layout bounds of corner eye matrices
                         if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
                             continue;
                         }
-                        // Skip canvas center coordinates window to allow brand logo spacing
                         const centerStart = Math.floor(moduleCount * 0.36);
                         const centerEnd = Math.ceil(moduleCount * 0.64);
                         if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) {
@@ -195,26 +256,23 @@
             ];
 
             eyeCoordinates.forEach(pos => {
-                // Outer ring frame
                 ctx.fillStyle = eyeHex;
                 ctx.beginPath();
                 ctx.roundRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize, cellSize * 1.5);
                 ctx.fill();
 
-                // Inner cutout mask
                 ctx.fillStyle = "#FFFFFF";
                 ctx.beginPath();
                 ctx.roundRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize, cellSize * 0.8);
                 ctx.fill();
 
-                // Solid center pupil
                 ctx.fillStyle = bodyHex;
                 ctx.beginPath();
                 ctx.roundRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize, cellSize * 0.4);
                 ctx.fill();
             });
 
-            // 3. Layer the branding graphic cleanly into the center of the canvas
+            // 3. Layer the branding graphic into the center
             if (savedLogoData) {
                 log("Overlaying brand logo assets...");
                 const logoImg = new Image();
@@ -224,7 +282,6 @@
                     const lx = (canvas.width - targetSize) / 2;
                     const ly = (canvas.height - targetSize) / 2;
 
-                    // Clear a backing badge space safely behind the image bounds
                     ctx.fillStyle = "#FFFFFF";
                     ctx.beginPath();
                     ctx.roundRect(lx - 6, ly - 6, targetSize + 12, targetSize + 12, 6);
