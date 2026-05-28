@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Branded Local QR Code Generator</title>
     
-    <script src="js/qrcode-svg.js"></script>
+    <script src="js/qrcode.min.js"></script>
     <script src="js/jspdf.umd.min.js"></script>
     <script src="js/html2canvas.min.js"></script>
     
@@ -72,16 +72,18 @@
     </div>
 </div>
 
+<div id="hidden-qr-buffer" style="display:none;"></div>
+
 <script>
     const logEl = document.getElementById('debug-log');
     function log(msg) { logEl.innerText = "Status Log: " + msg; console.log(msg); }
 
-    // Read URL params passed down by YOURLS
+    // Read target URL params passed down by YOURLS (?url=...)
     const urlParams = new URLSearchParams(window.location.search);
     let shortUrl = urlParams.get('url') || urlParams.get('content') || window.location.href;
     document.getElementById('target-url-text').innerText = "Short Link Target: " + shortUrl;
 
-    // Local storage data recovery configurations
+    // Local storage restoration values
     if(localStorage.getItem('qr_body_hex')) document.getElementById('bodyColorInput').value = localStorage.getItem('qr_body_hex');
     if(localStorage.getItem('qr_eye_hex')) document.getElementById('eyeColorInput').value = localStorage.getItem('qr_eye_hex');
     
@@ -92,7 +94,7 @@
         preview.style.display = 'block';
     }
 
-    // Assign UI interaction event bindings
+    // Interactive event triggers
     document.getElementById('logoInput').addEventListener('change', handleLogoUpload);
     document.getElementById('bodyColorInput').addEventListener('input', applyBrandingChanges);
     document.getElementById('eyeColorInput').addEventListener('input', applyBrandingChanges);
@@ -125,7 +127,7 @@
     }
 
     function renderBrandedQR() {
-        log("Accessing local generator components...");
+        log("Accessing verified local engine components...");
         const bodyHex = "#" + document.getElementById('bodyColorInput').value;
         const eyeHex = "#" + document.getElementById('eyeColorInput').value;
         
@@ -133,29 +135,30 @@
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Fallback checks for the local alexkolodko library engine architecture
         if (typeof QRCode === 'undefined') {
-            log("❌ Local Dependency Error: 'js/qrcode-svg.js' is missing or unreadable on your server folder structure.");
+            log("❌ Local Dependency Error: 'js/qrcode.min.js' failed to parse correctly.");
             return;
         }
 
+        const buffer = document.getElementById('hidden-qr-buffer');
+        buffer.innerHTML = '';
+
         try {
-            // Instantiate the internal model using alexkolodko's exact native parameters
-            const qrInstance = new QRCode({
-                content: shortUrl,
-                padding: 0,
-                width: 500,
-                height: 500,
-                ecl: "H"
+            // Initialize using the native qrcode.min.js library configuration
+            const qrInstance = new QRCode(buffer, {
+                text: shortUrl,
+                width: 256,
+                height: 256,
+                correctLevel: QRCode.CorrectLevel.H // Enforce high error correction
             });
 
-            // Read the binary map directly from the generated object modules
-            const modules = qrInstance.qrcode.modules;
+            // Extract the core data matrix modules natively mapped by this engine type
+            const modules = qrInstance._oQRCode.modules;
             const moduleCount = modules.length;
             const cellSize = canvas.width / moduleCount;
-            log("Local data matrix compiled. Drawing grid layout...");
+            log("Data matrix compiled successfully (" + moduleCount + "x" + moduleCount + "). Drawing elements...");
 
-            // 1. Draw rounded body data dots
+            // 1. Paint customized rounded matrix body dots
             ctx.fillStyle = bodyHex;
             for (let row = 0; row < moduleCount; row++) {
                 for (let col = 0; col < moduleCount; col++) {
@@ -164,7 +167,7 @@
                         if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
                             continue;
                         }
-                        // Skip canvas center coordinates window to allow logo spacing
+                        // Skip canvas center coordinates window to allow brand logo spacing
                         const centerStart = Math.floor(moduleCount * 0.36);
                         const centerEnd = Math.ceil(moduleCount * 0.64);
                         if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) {
@@ -178,7 +181,7 @@
                 }
             }
 
-            // 2. Draw styled position eyes custom colors
+            // 2. Paint styled corner tracking eyes
             const eyeCoordinates = [
                 { x: 0, y: 0 },
                 { x: (moduleCount - 7) * cellSize, y: 0 },
@@ -186,28 +189,28 @@
             ];
 
             eyeCoordinates.forEach(pos => {
-                // Outer ring structural framing
+                // Outer ring frame
                 ctx.fillStyle = eyeHex;
                 ctx.beginPath();
                 ctx.roundRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize, cellSize * 1.5);
                 ctx.fill();
 
-                // Clear mask square
+                // Inner cutout mask
                 ctx.fillStyle = "#FFFFFF";
                 ctx.beginPath();
                 ctx.roundRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize, cellSize * 0.8);
                 ctx.fill();
 
-                // Center tracking pupil
+                // Solid center pupil
                 ctx.fillStyle = bodyHex;
                 ctx.beginPath();
                 ctx.roundRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize, cellSize * 0.4);
                 ctx.fill();
             });
 
-            // 3. Render brand icon assets overlay inside canvas center
+            // 3. Layer the branding graphic cleanly into the center of the canvas
             if (savedLogoData) {
-                log("Overlaying custom image layers...");
+                log("Overlaying brand logo assets...");
                 const logoImg = new Image();
                 logoImg.src = savedLogoData;
                 logoImg.onload = function() {
@@ -215,17 +218,17 @@
                     const lx = (canvas.width - targetSize) / 2;
                     const ly = (canvas.height - targetSize) / 2;
 
-                    // Clean out a white backing box behind the image
+                    // Clear a backing badge space safely behind the image bounds
                     ctx.fillStyle = "#FFFFFF";
                     ctx.beginPath();
                     ctx.roundRect(lx - 6, ly - 6, targetSize + 12, targetSize + 12, 6);
                     ctx.fill();
 
                     ctx.drawImage(logoImg, lx, ly, targetSize, targetSize);
-                    log("✔ Success: QR code beautifully compiled locally.");
+                    log("✔ Success: Custom branded QR code generated!");
                 };
             } else {
-                log("✔ Success: QR code compiled locally (Waiting for logo attachment).");
+                log("✔ Success: Custom vector QR code generated (Awaiting logo upload).");
             }
 
         } catch (err) {
