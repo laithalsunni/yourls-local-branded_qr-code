@@ -12,8 +12,9 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 650px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
-        h1 { margin-top: 0; color: #111; font-size: 24px; }
-        #debug-log { background: #e2f0d9; color: #385723; padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 13px; font-family: monospace; border: 1px solid #c5e0b4; }
+        h1 { margin-top: 0; color: #111; font-size: 24px; margin-bottom: 5px; }
+        .section-desc { color: #666; font-size: 14px; margin-top: 0; margin-bottom: 20px; }
+        #debug-log { background: #e2f0d9; color: #385723; padding: 10px; border-radius: 4px; margin: 15px 0; font-size: 13px; font-family: monospace; border: 1px solid #c5e0b4; }
         #canvas-wrapper { margin: 25px auto; display: inline-block; background: #fff; padding: 15px; border: 1px solid #e1e4e6; border-radius: 6px; min-height: 500px; min-width: 500px; }
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; }
         button { background: #0073aa; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; transition: background 0.2s; }
@@ -22,24 +23,30 @@
         button.secondary:hover { background: #d1d4d6; }
         button.success { background: #46b450; border-bottom: 3px solid #239230; font-size: 16px; padding: 12px 28px; margin-bottom: 10px; }
         button.success:hover { background: #2e9b3d; }
+        
         .admin-panel { margin-top: 40px; border-top: 2px dashed #e1e4e6; padding-top: 25px; text-align: left; }
-        .admin-panel h3 { margin-top: 0; color: #444; }
+        .admin-panel h2 { margin-top: 0; color: #111; font-size: 20px; margin-bottom: 5px; }
+        .sub-section { background: #fdfdfd; border: 1px solid #eaeaea; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
+        .sub-section h4 { margin-top: 0; color: #222; font-size: 15px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sub-section .sub-desc { color: #777; font-size: 13px; margin-top: 0; margin-bottom: 15px; line-height: 1.4; }
+        
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; color: #444; }
         .color-input-wrapper { display: flex; align-items: center; gap: 8px; }
         .form-group input[type="text"] { width: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px; text-transform: uppercase; }
         .form-group input[type="color"] { border: none; padding: 0; width: 36px; height: 36px; border-radius: 4px; cursor: pointer; background: none; }
-        .preview-logo-thumb { max-height: 60px; display: block; margin-top: 8px; background: #f4f6f8; padding: 6px; border-radius: 4px; border: 1px solid #ddd; }
-        .toggle-container { margin: 10px 0; text-align: left; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #e1e4e6; }
-        .toggle-container label { font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .preview-logo-thumb { max-height: 60px; display: block; margin-top: 12px; background: #f4f6f8; padding: 6px; border-radius: 4px; border: 1px solid #ddd; }
+        .toggle-container { margin-top: 15px; background: #f0f4f8; padding: 10px 12px; border-radius: 4px; border: 1px solid #d0dbe5; }
+        .toggle-container label { font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #2c3e50; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Branded QR Code Export</h1>
+    <p class="section-desc" id="target-url-text">Parsing tracking link payload...</p>
+    
     <div id="debug-log">Status Log: Initializing localized script matrix...</div>
-    <p style="color: #666; font-size: 14px;" id="target-url-text">Parsing tracking link payload...</p>
 
     <div id="canvas-wrapper">
         <canvas id="qrCanvas" width="500" height="500"></canvas>
@@ -55,37 +62,48 @@
     </div>
 
     <div class="admin-panel">
-        <h3>Branding Control Console</h3>
-        <p style="color:#777; font-size:13px; margin-top:-10px; margin-bottom:20px;">Upload elements and instantly tune custom hex attributes below.</p>
+        <h2>Branding Control Console</h2>
+        <p class="section-desc">Customize your tracking link's visual presentation using vector color schemes and graphics overrides below.</p>
         
-        <div class="form-group">
-            <label>Upload Brand Logo overlay (PNG/JPG):</label>
-            <input type="file" id="logoInput" accept="image/*">
-            <img id="logoPreview" class="preview-logo-thumb" style="display:none;" />
+        <div class="sub-section">
+            <h4>1. Vector Palette Settings</h4>
+            <p class="sub-desc">Adjust the color mapping profiles for the structural layers. Use the visual color box or type raw 6-character hexadecimal codes manually.</p>
             
-            <div class="toggle-container">
-                <label>
-                    <input type="checkbox" id="autoColorToggle"> 
-                    🎨 Auto-update colors matching the uploaded logo palette
-                </label>
+            <div class="form-group">
+                <label>Matrix Body & Pupils Color:</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="bodyColorPicker" value="#000000">
+                    #<input type="text" id="bodyColorInput" value="000000" maxlength="6">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Outer Eye Frame Ring Color:</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="eyeColorPicker" value="#000000">
+                    #<input type="text" id="eyeColorInput" value="000000" maxlength="6">
+                </div>
             </div>
         </div>
         
-        <div class="form-group">
-            <label>Matrix Body & Pupils Color:</label>
-            <div class="color-input-wrapper">
-                <input type="color" id="bodyColorPicker" value="#000000">
-                #<input type="text" id="bodyColorInput" value="000000" maxlength="6">
+        <div class="sub-section">
+            <h4>2. Brand Logo Overlay</h4>
+            <p class="sub-desc">Upload a high-resolution transparent PNG or clear JPG image asset to position straight inside the center of your data grid structure.</p>
+            
+            <div class="form-group">
+                <label>Select Identity Graphic File:</label>
+                <input type="file" id="logoInput" accept="image/*">
+                <img id="logoPreview" class="preview-logo-thumb" style="display:none;" />
+                
+                <div class="toggle-container">
+                    <label>
+                        <input type="checkbox" id="autoColorToggle"> 
+                        🎨 Auto-update colors matching the uploaded logo palette
+                    </label>
+                </div>
             </div>
         </div>
         
-        <div class="form-group">
-            <label>Outer Eye Frame Ring Color:</label>
-            <div class="color-input-wrapper">
-                <input type="color" id="eyeColorPicker" value="#000000">
-                #<input type="text" id="eyeColorInput" value="000000" maxlength="6">
-            </div>
-        </div>
     </div>
 </div>
 
@@ -99,7 +117,6 @@
     shortUrl = String(shortUrl);
     document.getElementById('target-url-text').innerText = "Short Link Target: " + shortUrl;
 
-    // Local storage data recovery configurations
     if(localStorage.getItem('qr_body_hex')) {
         const savedBody = localStorage.getItem('qr_body_hex');
         document.getElementById('bodyColorInput').value = savedBody;
@@ -118,7 +135,6 @@
         preview.style.display = 'block';
     }
 
-    // Binding interactive events to text boxes as well as picker buttons
     document.getElementById('logoInput').addEventListener('change', handleLogoUpload);
     
     document.getElementById('bodyColorInput').addEventListener('input', (e) => handleTextColors(e.target.value, 'body'));
@@ -133,7 +149,6 @@
         setTimeout(renderBrandedQR, 300);
     };
 
-    // Keep color pickers and input strings tightly synced together 
     function handleTextColors(val, type) {
         if(val.length === 6) {
             document.getElementById(type + 'ColorPicker').value = "#" + val;
