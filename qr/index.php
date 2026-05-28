@@ -26,7 +26,9 @@
         .admin-panel h3 { margin-top: 0; color: #444; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        .form-group input[type="text"] { width: 120px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px; }
+        .color-input-wrapper { display: flex; align-items: center; gap: 8px; }
+        .form-group input[type="text"] { width: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px; text-transform: uppercase; }
+        .form-group input[type="color"] { border: none; padding: 0; width: 36px; height: 36px; border-radius: 4px; cursor: pointer; background: none; }
         .preview-logo-thumb { max-height: 60px; display: block; margin-top: 8px; background: #f4f6f8; padding: 6px; border-radius: 4px; border: 1px solid #ddd; }
         .toggle-container { margin: 10px 0; text-align: left; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #e1e4e6; }
         .toggle-container label { font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; }
@@ -63,20 +65,26 @@
             
             <div class="toggle-container">
                 <label>
-                    <input type="checkbox" id="autoColorToggle" checked> 
+                    <input type="checkbox" id="autoColorToggle"> 
                     🎨 Auto-update colors matching the uploaded logo palette
                 </label>
             </div>
         </div>
         
         <div class="form-group">
-            <label>Matrix Body & Pupils Color (HEX):</label>
-            #<input type="text" id="bodyColorInput" value="321F21" maxlength="6">
+            <label>Matrix Body & Pupils Color:</label>
+            <div class="color-input-wrapper">
+                <input type="color" id="bodyColorPicker" value="#000000">
+                #<input type="text" id="bodyColorInput" value="000000" maxlength="6">
+            </div>
         </div>
         
         <div class="form-group">
-            <label>Outer Eye Frame Ring Color (HEX):</label>
-            #<input type="text" id="eyeColorInput" value="A35E39" maxlength="6">
+            <label>Outer Eye Frame Ring Color:</label>
+            <div class="color-input-wrapper">
+                <input type="color" id="eyeColorPicker" value="#000000">
+                #<input type="text" id="eyeColorInput" value="000000" maxlength="6">
+            </div>
         </div>
     </div>
 </div>
@@ -91,8 +99,17 @@
     shortUrl = String(shortUrl);
     document.getElementById('target-url-text').innerText = "Short Link Target: " + shortUrl;
 
-    if(localStorage.getItem('qr_body_hex')) document.getElementById('bodyColorInput').value = localStorage.getItem('qr_body_hex');
-    if(localStorage.getItem('qr_eye_hex')) document.getElementById('eyeColorInput').value = localStorage.getItem('qr_eye_hex');
+    // Local storage data recovery configurations
+    if(localStorage.getItem('qr_body_hex')) {
+        const savedBody = localStorage.getItem('qr_body_hex');
+        document.getElementById('bodyColorInput').value = savedBody;
+        document.getElementById('bodyColorPicker').value = "#" + savedBody;
+    }
+    if(localStorage.getItem('qr_eye_hex')) {
+        const savedEye = localStorage.getItem('qr_eye_hex');
+        document.getElementById('eyeColorInput').value = savedEye;
+        document.getElementById('eyeColorPicker').value = "#" + savedEye;
+    }
     
     let savedLogoData = localStorage.getItem('qr_logo_base64') || '';
     if(savedLogoData) {
@@ -101,14 +118,36 @@
         preview.style.display = 'block';
     }
 
+    // Binding interactive events to text boxes as well as picker buttons
     document.getElementById('logoInput').addEventListener('change', handleLogoUpload);
-    document.getElementById('bodyColorInput').addEventListener('input', applyBrandingChanges);
-    document.getElementById('eyeColorInput').addEventListener('input', applyBrandingChanges);
+    
+    document.getElementById('bodyColorInput').addEventListener('input', (e) => handleTextColors(e.target.value, 'body'));
+    document.getElementById('bodyColorPicker').addEventListener('input', (e) => handlePickerColors(e.target.value, 'body'));
+    
+    document.getElementById('eyeColorInput').addEventListener('input', (e) => handleTextColors(e.target.value, 'eye'));
+    document.getElementById('eyeColorPicker').addEventListener('input', (e) => handlePickerColors(e.target.value, 'eye'));
+    
     document.getElementById('generateBtn').addEventListener('click', renderBrandedQR);
 
     window.onload = function() {
         setTimeout(renderBrandedQR, 300);
     };
+
+    // Keep color pickers and input strings tightly synced together 
+    function handleTextColors(val, type) {
+        if(val.length === 6) {
+            document.getElementById(type + 'ColorPicker').value = "#" + val;
+            localStorage.setItem('qr_' + type + '_hex', val);
+            renderBrandedQR();
+        }
+    }
+
+    function handlePickerColors(val, type) {
+        const directHex = val.replace('#', '').toUpperCase();
+        document.getElementById(type + 'ColorInput').value = directHex;
+        localStorage.setItem('qr_' + type + '_hex', directHex);
+        renderBrandedQR();
+    }
 
     function handleLogoUpload(event) {
         const file = event.target.files[0];
@@ -122,7 +161,6 @@
             preview.style.display = 'block';
             log("New logo loaded into browser memory cache.");
             
-            // Check if auto color matching is enabled
             if (document.getElementById('autoColorToggle').checked) {
                 extractColorsFromLogo(savedLogoData);
             } else {
@@ -132,12 +170,10 @@
         reader.readAsDataURL(file);
     }
 
-    // Dynamic Color Palette Picker Extraction Engine
     function extractColorsFromLogo(base64Img) {
         const img = new Image();
         img.src = base64Img;
         img.onload = function() {
-            // Create small background buffer canvas to read image pixels quickly
             const sampleCanvas = document.createElement('canvas');
             const sampleCtx = sampleCanvas.getContext('2d');
             sampleCanvas.width = 50;
@@ -147,16 +183,14 @@
             const imgData = sampleCtx.getImageData(0, 0, 50, 50).data;
             let colors = [];
             
-            // Collect all non-transparent, non-white, and non-black pixel clusters
             for (let i = 0; i < imgData.length; i += 16) {
                 const r = imgData[i];
                 const g = imgData[i+1];
                 const b = imgData[i+2];
                 const a = imgData[i+3];
                 
-                if (a > 200) { // Keep solid color pixels
+                if (a > 200) { 
                     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-                    // Filter out pure white backgrounds or extreme dark areas
                     if (brightness < 240 && brightness > 15) {
                         colors.push({r, g, b});
                     }
@@ -164,15 +198,16 @@
             }
             
             if (colors.length >= 2) {
-                // Map out distinct accent color points
                 const toHex = (c) => [c.r, c.g, c.b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
                 
                 const primaryColorHex = toHex(colors[0]);
                 const secondaryColorHex = toHex(colors[Math.floor(colors.length / 2)]);
                 
-                // Update interface input values directly
                 document.getElementById('bodyColorInput').value = primaryColorHex;
+                document.getElementById('bodyColorPicker').value = "#" + primaryColorHex;
+                
                 document.getElementById('eyeColorInput').value = secondaryColorHex;
+                document.getElementById('eyeColorPicker').value = "#" + secondaryColorHex;
                 
                 localStorage.setItem('qr_body_hex', primaryColorHex);
                 localStorage.setItem('qr_eye_hex', secondaryColorHex);
@@ -181,12 +216,6 @@
             
             renderBrandedQR();
         };
-    }
-
-    function applyBrandingChanges() {
-        localStorage.setItem('qr_body_hex', document.getElementById('bodyColorInput').value);
-        localStorage.setItem('qr_eye_hex', document.getElementById('eyeColorInput').value);
-        renderBrandedQR();
     }
 
     function renderBrandedQR() {
