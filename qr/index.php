@@ -12,35 +12,34 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 650px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
         h1 { margin-top: 0; color: #111; font-size: 24px; }
-        #canvas-wrapper { margin: 25px auto; display: inline-block; background: #fff; padding: 15px; border: 1px solid #e1e4e6; border-radius: 6px; min-height: 500px; min-width: 500px; position: relative;}
+        #canvas-wrapper { margin: 25px auto; display: inline-block; background: #fff; padding: 15px; border: 1px solid #e1e4e6; border-radius: 6px; min-height: 500px; min-width: 500px; }
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; }
         button { background: #0073aa; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; transition: background 0.2s; }
         button:hover { background: #005177; }
         button.secondary { background: #e1e4e6; color: #333; }
         button.secondary:hover { background: #d1d4d6; }
-        button.success { background: #46b450; border-bottom: 3px solid #239230; font-size: 16px; padding: 12px 28px; }
+        button.success { background: #46b450; border-bottom: 3px solid #239230; font-size: 16px; padding: 12px 28px; transition: none; margin-bottom: 10px; }
         button.success:hover { background: #2e9b3d; }
         .admin-panel { margin-top: 40px; border-top: 2px dashed #e1e4e6; padding-top: 25px; text-align: left; }
         .admin-panel h3 { margin-top: 0; color: #444; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         .form-group input[type="text"] { width: 120px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px; }
-        .form-group input[type="file"] { font-size: 13px; }
-        .preview-logo-thumb { max-height: 50px; display: block; margin-top: 8px; background: #f4f6f8; padding: 4px; border-radius: 4px; border: 1px solid #ddd; }
+        .preview-logo-thumb { max-height: 60px; display: block; margin-top: 8px; background: #f4f6f8; padding: 6px; border-radius: 4px; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Branded QR Code Export</h1>
-    <p style="color: #666; font-size: 14px;" id="target-url-text">Loading shortlink data...</p>
+    <p style="color: #666; font-size: 14px;" id="target-url-text">Parsing tracking link payload...</p>
 
     <div id="canvas-wrapper">
         <canvas id="qrCanvas" width="500" height="500"></canvas>
     </div>
 
-    <div style="margin: 10px 0 25px 0;">
-        <button class="success" onclick="renderBrandedQR()">⚡ Generate / Refresh QR Code</button>
+    <div>
+        <button class="success" id="generateBtn">⚡ Generate / Refresh QR Code</button>
     </div>
 
     <div class="btn-group">
@@ -50,35 +49,36 @@
 
     <div class="admin-panel">
         <h3>Branding Control Console</h3>
-        <p style="color:#777; font-size:13px; margin-top:-10px; margin-bottom:20px;">Configure your custom asset profiles. Setting properties save locally via your browser session parameters.</p>
+        <p style="color:#777; font-size:13px; margin-top:-10px; margin-bottom:20px;">Upload assets and configure custom hex matching properties seamlessly on the fly.</p>
         
         <div class="form-group">
             <label>Upload Brand Logo overlay (PNG/JPG):</label>
-            <input type="file" id="logoInput" accept="image/*" onchange="handleLogoUpload(event)">
+            <input type="file" id="logoInput" accept="image/*">
             <img id="logoPreview" class="preview-logo-thumb" style="display:none;" />
         </div>
         
         <div class="form-group">
             <label>Matrix Body & Pupils Color (HEX):</label>
-            #<input type="text" id="bodyColorInput" value="321F21" maxlength="6" oninput="applyBrandingChanges()">
+            #<input type="text" id="bodyColorInput" value="321F21" maxlength="6">
         </div>
         
         <div class="form-group">
             <label>Outer Eye Frame Ring Color (HEX):</label>
-            #<input type="text" id="eyeColorInput" value="A35E39" maxlength="6" oninput="applyBrandingChanges()">
+            #<input type="text" id="eyeColorInput" value="A35E39" maxlength="6">
         </div>
     </div>
 </div>
 
 <script>
-    // Grab configurations from URL variables
+    // FIX 1: Parse the exact "?url=" query parameter passed natively by the base YOURLS backend addon
     const urlParams = new URLSearchParams(window.location.search);
-    const shortUrl = urlParams.get('content') || window.location.href;
+    const shortUrl = urlParams.get('url') || window.location.href;
     document.getElementById('target-url-text').innerText = "Short Link Target: " + shortUrl;
 
-    // Load initialization parameters from localStorage cache
+    // Persist configurations locally inside user session environments
     if(localStorage.getItem('qr_body_hex')) document.getElementById('bodyColorInput').value = localStorage.getItem('qr_body_hex');
     if(localStorage.getItem('qr_eye_hex')) document.getElementById('eyeColorInput').value = localStorage.getItem('qr_eye_hex');
+    
     let savedLogoData = localStorage.getItem('qr_logo_base64') || '';
     if(savedLogoData) {
         const preview = document.getElementById('logoPreview');
@@ -86,9 +86,15 @@
         preview.style.display = 'block';
     }
 
-    // Run layout render on boot up
+    // Attach high-performance UI input interaction event listeners
+    document.getElementById('logoInput').addEventListener('change', handleLogoUpload);
+    document.getElementById('bodyColorInput').addEventListener('input', applyBrandingChanges);
+    document.getElementById('eyeColorInput').addEventListener('input', applyBrandingChanges);
+    document.getElementById('generateBtn').addEventListener('click', renderBrandedQR);
+
+    // Run core engine compile on window load states
     window.onload = function() {
-        renderBrandedQR();
+        setTimeout(renderBrandedQR, 200);
     };
 
     function handleLogoUpload(event) {
@@ -101,9 +107,7 @@
             const preview = document.getElementById('logoPreview');
             preview.src = savedLogoData;
             preview.style.display = 'block';
-            
-            // Give browser a microsecond breathing window to settle properties, then draw
-            setTimeout(renderBrandedQR, 100);
+            renderBrandedQR();
         };
         reader.readAsDataURL(file);
     }
@@ -114,59 +118,6 @@
         renderBrandedQR();
     }
 
-    function drawBaseMatrix(ctx, canvas, moduleCount, modules, cellSize, bodyHex, eyeHex) {
-        // Step 1: Render standard data modules mapping lines
-        ctx.fillStyle = bodyHex;
-        for (let row = 0; row < moduleCount; row++) {
-            for (let col = 0; col < moduleCount; col++) {
-                if (modules[row][col]) {
-                    // Skip tracking corner eye regions coordinates
-                    if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
-                        continue;
-                    }
-                    // Skip execution center space for logo branding blocks
-                    const centerStart = Math.floor(moduleCount * 0.36);
-                    const centerEnd = Math.ceil(moduleCount * 0.64);
-                    if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) {
-                        continue;
-                    }
-                    
-                    // Render smooth data dots
-                    ctx.beginPath();
-                    ctx.arc((col * cellSize) + (cellSize / 2), (row * cellSize) + (cellSize / 2), (cellSize / 2) * 0.85, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
-            }
-        }
-
-        // Step 2: Draw Tracking Corner Eyes with Custom Color Mapping
-        const eyeCoordinates = [
-            { x: 0, y: 0 },                                  // Top Left
-            { x: (moduleCount - 7) * cellSize, y: 0 },       // Top Right
-            { x: 0, y: (moduleCount - 7) * cellSize }        // Bottom Left
-        ];
-
-        eyeCoordinates.forEach(pos => {
-            // Draw Outer Ring Frame
-            ctx.fillStyle = eyeHex;
-            ctx.beginPath();
-            ctx.roundRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize, cellSize * 1.5);
-            ctx.fill();
-
-            // Internal Isolation Knockout Box Area
-            ctx.fillStyle = "#FFFFFF";
-            ctx.beginPath();
-            ctx.roundRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize, cellSize * 0.8);
-            ctx.fill();
-
-            // Core Tracking Pupil Solid Box Area
-            ctx.fillStyle = bodyHex;
-            ctx.beginPath();
-            ctx.roundRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize, cellSize * 0.4);
-            ctx.fill();
-        });
-    }
-
     function renderBrandedQR() {
         const bodyHex = "#" + document.getElementById('bodyColorInput').value;
         const eyeHex = "#" + document.getElementById('eyeColorInput').value;
@@ -175,12 +126,12 @@
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Force high density error tracking to support central graphics
+        // Utilize dependency hooks to convert short strings into base matrices (ECL: High)
         const qrcode = new QRCode({
             content: shortUrl,
-            padding: 2,
-            width: 256,
-            height: 256,
+            padding: 0,
+            width: 500,
+            height: 500,
             ecl: "H" 
         });
 
@@ -188,14 +139,61 @@
         const moduleCount = modules.length;
         const cellSize = canvas.width / moduleCount;
 
-        // Draw structural elements
-        drawBaseMatrix(ctx, canvas, moduleCount, modules, cellSize, bodyHex, eyeHex);
+        // Draw data dots matrix tracking loops
+        ctx.fillStyle = bodyHex;
+        for (let row = 0; row < moduleCount; row++) {
+            for (let col = 0; col < moduleCount; col++) {
+                if (modules[row][col]) {
+                    // Skip positioning corner eye areas properties
+                    if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
+                        continue;
+                    }
+                    // Isolate target matrix centers to maintain transparent spacing for logo badges
+                    const centerStart = Math.floor(moduleCount * 0.36);
+                    const centerEnd = Math.ceil(moduleCount * 0.64);
+                    if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) {
+                        continue;
+                    }
+                    
+                    // Render precise smooth structural circles
+                    ctx.beginPath();
+                    ctx.arc((col * cellSize) + (cellSize / 2), (row * cellSize) + (cellSize / 2), (cellSize / 2) * 0.85, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+        }
 
-        // Step 3: Handle logo compilation synchronously using an event framework callback hook
+        // Generate Custom Styled Tracking Eye Matrices
+        const eyeCoordinates = [
+            { x: 0, y: 0 },
+            { x: (moduleCount - 7) * cellSize, y: 0 },
+            { x: 0, y: (moduleCount - 7) * cellSize }
+        ];
+
+        eyeCoordinates.forEach(pos => {
+            // Accent Color Frame Ring
+            ctx.fillStyle = eyeHex;
+            ctx.beginPath();
+            ctx.roundRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize, cellSize * 1.5);
+            ctx.fill();
+
+            // Clear White Isolation Mask Inner Ring
+            ctx.fillStyle = "#FFFFFF";
+            ctx.beginPath();
+            ctx.roundRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize, cellSize * 0.8);
+            ctx.fill();
+
+            // Solid Core Central Tracking Pupil
+            ctx.fillStyle = bodyHex;
+            ctx.beginPath();
+            ctx.roundRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize, cellSize * 0.4);
+            ctx.fill();
+        });
+
+        // Overlay central branding asset safely onto canvas layers asynchronously
         if (savedLogoData) {
             const logoImg = new Image();
             logoImg.src = savedLogoData;
-            
             logoImg.onload = function() {
                 const targetSize = canvas.width * 0.24;
                 const lx = (canvas.width - targetSize) / 2;
@@ -208,12 +206,6 @@
                 ctx.fill();
 
                 ctx.drawImage(logoImg, lx, ly, targetSize, targetSize);
-            };
-            
-            // Fallback patch link in case reader state caches fail on hot load calls
-            logoImg.onerror = function() {
-                console.log("Logo rendering dropped. Refreshing base matrix.");
-                drawBaseMatrix(ctx, canvas, moduleCount, modules, cellSize, bodyHex, eyeHex);
             };
         }
     }
