@@ -74,141 +74,127 @@ function extractColorsFromLogo(base64Img) {
             }
         }
         
-        if (colors.length >= 2) {
-            var componentToHex = function(c) {
-                var hex = c.toString(16);
-                return hex.length == 1 ? "0" + hex : hex;
-            };
-            var toHex = function(color) {
-                return (componentToHex(color.r) + componentToHex(color.g) + componentToHex(color.b)).toUpperCase();
-            };
+        if (colors.length > 0) {
+            colors.sort(function(a,b) {
+                return (a.r+a.g+a.b) - (b.r+b.g+b.b);
+            });
             
-            var primaryColorHex = toHex(colors[0]);
-            var secondaryColorHex = toHex(colors[Math.floor(colors.length / 2)]);
+            var primary = colors[0];
+            var secondary = colors[Math.floor(colors.length / 2)] || colors[0];
             
-            jQuery('#bodyColorInput').val(primaryColorHex);
-            jQuery('#bodyColorPicker').val("#" + primaryColorHex);
-            jQuery('#eyeColorInput').val(secondaryColorHex);
-            jQuery('#eyeColorPicker').val("#" + secondaryColorHex);
+            function rgbToHex(c) {
+                var hex = ((c.r << 16) | (c.g << 8) | c.b).toString(16).toUpperCase();
+                return ("000000" + hex).slice(-6);
+            }
             
-            localStorage.setItem('qr_body_hex', primaryColorHex);
-            localStorage.setItem('qr_eye_hex', secondaryColorHex);
-            log("🎨 Color palette successfully sampled from your logo image.");
+            var primaryHex = rgbToHex(primary);
+            var secondaryHex = rgbToHex(secondary);
+            
+            jQuery('#bodyColorInput').val(primaryHex);
+            jQuery('#bodyColorPicker').val('#' + primaryHex);
+            localStorage.setItem('qr_body_hex', primaryHex);
+            
+            jQuery('#eyeColorInput').val(secondaryHex);
+            jQuery('#eyeColorPicker').val('#' + secondaryHex);
+            localStorage.setItem('qr_eye_hex', secondaryHex);
+            
+            log("Palette matching matrix extracted successfully.");
         }
         renderBrandedQR();
     };
 }
 
 function renderBrandedQR() {
+    var textPayload = jQuery('#targetShortUrl').val() || window.location.href;
     var canvas = document.getElementById('qrCanvas');
     if (!canvas) return;
-    
-    log("Accessing verified local engine components...");
-    var targetLink = jQuery('#targetShortUrl').val() || window.location.href;
-    var bodyHex = "#" + (jQuery('#bodyColorInput').val() || "000000");
-    var eyeHex = "#" + (jQuery('#eyeColorInput').val() || "000000");
-    var savedLogoData = localStorage.getItem('qr_logo_base64') || '';
-    
     var ctx = canvas.getContext('2d');
+    
+    var bodyHex = jQuery('#bodyColorInput').val() || "000000";
+    var eyeHex = jQuery('#eyeColorInput').val() || "000000";
+    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (typeof QRCode === 'undefined') {
-        log("❌ Local Dependency Error: 'qrcode.min.js' failed to parse correctly.");
-        return;
-    }
-
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
     try {
-        // Run a lightweight headless matrix calculation pass via our core library
-        var rawEngine = new QRCode(document.createElement('div'), {
-            text: targetLink,
-            width: 500,
-            height: 500,
-            correctLevel: QRCode.CorrectLevel.H
-        });
-
-        var modules = null;
-        if (rawEngine._oQRCode && rawEngine._oQRCode.modules) {
-            modules = rawEngine._oQRCode.modules;
-        }
-
-        if (!modules) {
-            log("❌ Matrix Extraction Error: Structure mapping layout mismatch.");
-            return;
-        }
-
-        var moduleCount = modules.length;
-        var cellSize = canvas.width / moduleCount;
-        log("Data matrix compiled successfully (" + moduleCount + "x" + moduleCount + "). Drawing elements...");
-
-        // 1. Paint structural body data bits using smooth dots
-        ctx.fillStyle = bodyHex;
-        for (var row = 0; row < moduleCount; row++) {
-            for (var col = 0; col < moduleCount; col++) {
-                if (modules[row][col]) {
-                    // Skip coordinates allocated to functional positioning eye structures
-                    if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
-                        continue;
-                    }
-                    // Calculate a geometric safe boundary center zone to isolate the logo overlay
-                    var centerStart = Math.floor(moduleCount * 0.34);
-                    var centerEnd = Math.ceil(moduleCount * 0.66);
-                    if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) {
-                        continue;
-                    }
-                    
-                    ctx.beginPath();
-                    ctx.arc((col * cellSize) + (cellSize / 2), (row * cellSize) + (cellSize / 2), (cellSize / 2) * 0.88, 0, 2 * Math.PI);
-                    ctx.fill();
+        var qr = new QRCode(parseInt(-1), 3); // TypeNumber -1 implies dynamic auto determination, Level 3 is High Error Density (H)
+        qr.addData(textPayload);
+        qr.make();
+        
+        var count = qr.getModuleCount();
+        var cellSize = canvas.width / count;
+        
+        // Draw normal background data matrices
+        for (var row = 0; row < count; row++) {
+            for (var col = 0; col < count; col++) {
+                
+                // Skip the alignment Eye Frames mapping tracks explicitly
+                if ((row < 7 && col < 7) || (row < 7 && col >= count - 7) || (row >= count - 7 && col < 7)) {
+                    continue; 
+                }
+                
+                // Clear an optimization layout pocket directly in the center for branding logos
+                if (row >= Math.floor(count/2) - 3 && row <= Math.floor(count/2) + 3 &&
+                    col >= Math.floor(count/2) - 3 && col <= Math.floor(count/2) + 3) {
+                    continue;
+                }
+                
+                if (qr.isDark(row, col)) {
+                    ctx.fillStyle = "#" + bodyHex;
+                    ctx.fillRect(Math.round(col * cellSize), Math.round(row * cellSize), Math.ceil(cellSize), Math.ceil(cellSize));
                 }
             }
         }
-
-        // 2. Compute and paint styled rounded tracking eyes directly into context canvases
-        var eyeCoordinates = [
+        
+        // Render stylized alignment position eye elements safely
+        var eyePositions = [
             { x: 0, y: 0 },
-            { x: (moduleCount - 7) * cellSize, y: 0 },
-            { x: 0, y: (moduleCount - 7) * cellSize }
+            { x: (count - 7) * cellSize, y: 0 },
+            { x: 0, y: (count - 7) * cellSize }
         ];
-
-        eyeCoordinates.forEach(function(pos) {
-            ctx.fillStyle = eyeHex;
-            ctx.getTransform ? ctx.beginPath() : null; 
-            if(typeof ctx.roundRect === "function") {
+        
+        eyePositions.forEach(function(pos) {
+            ctx.fillStyle = "#" + eyeHex;
+            if (typeof ctx.roundRect === "function") {
                 ctx.beginPath(); ctx.roundRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize, cellSize * 1.5); ctx.fill();
-                ctx.fillStyle = "#FFFFFF"; ctx.beginPath(); ctx.roundRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize, cellSize * 0.8); ctx.fill();
-                ctx.fillStyle = bodyHex; ctx.beginPath(); ctx.roundRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize, cellSize * 0.4); ctx.fill();
+                ctx.fillStyle = "#FFFFFF";
+                ctx.beginPath(); ctx.roundRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize, cellSize * 1.0); ctx.fill();
+                ctx.fillStyle = "#" + bodyHex;
+                ctx.beginPath(); ctx.roundRect(pos.x + 2 * cellSize, pos.y + 2 * cellSize, 3 * cellSize, 3 * cellSize, cellSize * 0.4); ctx.fill();
             } else {
-                // Secure canvas compatibility layout fallback mappings
                 ctx.fillRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize);
-                ctx.fillStyle = "#FFFFFF"; ctx.fillRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize);
-                ctx.fillStyle = bodyHex; ctx.fillRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize);
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize);
+                ctx.fillStyle = "#" + bodyHex;
+                ctx.fillRect(pos.x + 2 * cellSize, pos.y + 2 * cellSize, 3 * cellSize, 3 * cellSize);
             }
         });
-
-        // 3. Render brand identity files directly center stage over matrix rows
+        
+        // Blit center branding logo assets
+        var savedLogoData = localStorage.getItem('qr_logo_base64');
         if (savedLogoData) {
-            log("Overlaying brand logo assets...");
             var logoImg = new Image();
             logoImg.src = savedLogoData;
             logoImg.onload = function() {
-                var targetSize = canvas.width * 0.24;
+                var targetSize = canvas.width * 0.18; 
                 var lx = (canvas.width - targetSize) / 2;
                 var ly = (canvas.height - targetSize) / 2;
-
-                ctx.fillStyle = "#FFFFFF";
-                if(typeof ctx.roundRect === "function") {
-                    ctx.beginPath(); ctx.roundRect(lx - 6, ly - 6, targetSize + 12, targetSize + 12, 6); ctx.fill();
+                
+                ctx.fillStyle = '#FFFFFF';
+                if (typeof ctx.roundRect === "function") {
+                    ctx.beginPath(); ctx.roundRect(lx - 10, ly - 10, targetSize + 20, targetSize + 20, 10); ctx.fill();
                 } else {
-                    ctx.fillRect(lx - 6, ly - 6, targetSize + 12, targetSize + 12);
+                    ctx.fillRect(lx - 10, ly - 10, targetSize + 20, targetSize + 20);
                 }
-
+                
                 ctx.drawImage(logoImg, lx, ly, targetSize, targetSize);
                 log("✔ Success: Custom branded QR code generated!");
             };
         } else {
             log("✔ Success: Custom vector QR code generated (Awaiting logo upload).");
         }
-
+        
     } catch (err) {
         log("❌ Canvas Draw Failure: " + err.message);
     }
@@ -228,16 +214,19 @@ function downloadPDF() {
     if(!canvas) return;
     var imgData = canvas.toDataURL('image/png');
     
-    if(window.jspdf && window.jspdf.jsPDF) {
-        var pdf = new window.jspdf.jsPDF({
+    var libraryInstance = window.jspdf || window.jsPDF;
+    if(libraryInstance && libraryInstance.jsPDF) {
+        var pdf = new libraryInstance.jsPDF({
             orientation: 'portrait',
             unit: 'mm',
             format: 'a4'
         });
         pdf.text("Branded Tracking Shortlink Asset", 20, 20);
-        pdf.addImage(imgData, 'PNG', 20, 30, 100, 100);
-        pdf.save('shortlink-qr-manifest.pdf');
+        pdf.addImage(imgData, 'PNG', 20, 30, 170, 170);
+        pdf.save('branded-shortlink-qr.pdf');
+        log("✔ Print document pipeline finalized successfully.");
     } else {
-        alert("The PDF export module is fully operational inside the main configuration page dashboard panel workspace.");
+        alert("PDF Generation Library is not available. Please verify your connection.");
+        log("❌ PDF Generation Library instance verification failed.");
     }
 }
