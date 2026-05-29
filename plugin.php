@@ -2,8 +2,8 @@
 /*
 Plugin Name: Branded QR Code Suite
 Plugin URI: https://github.com/laithalsunni/yourls-local-branded_qr-code
-Description: Locally generated, highly customizable, vector-perfect branded QR codes matching logo palettes dynamically via localized canvas mapping panels with explicit submission loops.
-Version: 3.5
+Description: Locally generated, highly customizable, vector-perfect branded QR codes matching logo palettes dynamically.
+Version: 3.6
 Author: Laith Alsunni
 Author URI: https://github.com/laithalsunni
 */
@@ -126,39 +126,35 @@ function branded_qrcode_admin_page() {
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
-        jQuery(document).ready(function($) {
+        // All core functions (renderBrandedQR, handleTextColors, etc.) are defined in inline-qrcode.js
+        // This script only restores saved colors and binds events after the DOM is ready.
+        document.addEventListener('DOMContentLoaded', function() {
             // Restore saved colors
-            if(localStorage.getItem('qr_body_hex')) {
-                var bh = localStorage.getItem('qr_body_hex');
-                $('#bodyColorInput').val(bh);
-                $('#bodyColorPicker').val('#' + bh);
+            var bh = localStorage.getItem('qr_body_hex');
+            if (bh) {
+                document.getElementById('bodyColorInput').value = bh;
+                document.getElementById('bodyColorPicker').value = '#' + bh;
             }
-            if(localStorage.getItem('qr_eye_hex')) {
-                var eh = localStorage.getItem('qr_eye_hex');
-                $('#eyeColorInput').val(eh);
-                $('#eyeColorPicker').val('#' + eh);
+            var eh = localStorage.getItem('qr_eye_hex');
+            if (eh) {
+                document.getElementById('eyeColorInput').value = eh;
+                document.getElementById('eyeColorPicker').value = '#' + eh;
             }
-
-            // Bind events – all core functions (renderBrandedQR, handleLogoUpload, etc.) are in inline-qrcode.js
-            $('#bodyColorInput').on('input', function() { handleTextColors($(this).val(), 'body'); });
-            $('#bodyColorPicker').on('input', function() { handlePickerColors($(this).val(), 'body'); });
-            $('#eyeColorInput').on('input', function() { handleTextColors($(this).val(), 'eye'); });
-            $('#eyeColorPicker').on('input', function() { handlePickerColors($(this).val(), 'eye'); });
-            $('#targetShortUrl').on('input', function() { renderBrandedQR(); });
-
-            $('#submitLogoBtn').on('click', function(e) {
-                e.preventDefault();
+            // Bind events
+            document.getElementById('bodyColorInput').addEventListener('input', function(e) { handleTextColors(e.target.value, 'body'); });
+            document.getElementById('bodyColorPicker').addEventListener('input', function(e) { handlePickerColors(e.target.value, 'body'); });
+            document.getElementById('eyeColorInput').addEventListener('input', function(e) { handleTextColors(e.target.value, 'eye'); });
+            document.getElementById('eyeColorPicker').addEventListener('input', function(e) { handlePickerColors(e.target.value, 'eye'); });
+            document.getElementById('targetShortUrl').addEventListener('input', function() { renderBrandedQR(); });
+            document.getElementById('submitLogoBtn').addEventListener('click', function() {
                 var fileInput = document.getElementById('logoInput');
-                if(fileInput.files && fileInput.files[0]) {
-                    handleLogoUpload({ target: fileInput });
+                if (fileInput.files && fileInput.files[0]) {
+                    handleLogoUpload(fileInput.files[0]);
                 } else {
                     alert('Select a logo file first.');
                 }
             });
-
-            // Initial render
-            var urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.get('url')) $('#targetShortUrl').val(urlParams.get('url'));
+            // Initial render after a short delay to ensure QRCode library is ready
             setTimeout(renderBrandedQR, 300);
         });
     </script>
