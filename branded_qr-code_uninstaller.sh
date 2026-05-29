@@ -23,19 +23,14 @@ fi
 
 PLUGIN_DIR="$YOURLS_ROOT/user/plugins/$TARGET_PLUGIN_NAME"
 
-# 1. Gracefully deactivate using internal CLI framework protocols if accessible
-if [ -f "$YOURLS_ROOT/user/cli.php" ]; then
-    echo "-> Deactivating module hooks..."
-    sudo php "$YOURLS_ROOT/user/cli.php" plugin deactivate "$TARGET_PLUGIN_NAME" || true
-fi
-
-# 2. Drop disk assets completely
+# Drop disk assets completely
 if [ -d "$PLUGIN_DIR" ]; then
     echo "-> Sweeping system plugin file trees..."
     sudo rm -rf "$PLUGIN_DIR"
-    echo "✔ Extension storage structures deleted successfully."
-else
-    echo "ℹ Notice: Plugin storage path already clean."
+fi
+
+if [ -d "$YOURLS_ROOT/user/plugins/yourls-local-branded_qr-code" ]; then
+    sudo rm -rf "$YOURLS_ROOT/user/plugins/yourls-local-branded_qr-code"
 fi
 
 echo "====================================================="
