@@ -3,7 +3,7 @@
 Plugin Name: Branded QR Code Suite
 Plugin URI: https://github.com/laithalsunni/yourls-local-branded_qr-code
 Description: Highly customizable, vector-perfect branded QR codes matching logo palettes dynamically via server-side GD engine processing and permanent storage routing.
-Version: 4.1
+Version: 4.2
 Author: Laith Alsunni
 Author URI: https://github.com/laithalsunni
 */
@@ -16,7 +16,7 @@ define('BQR_UPLOAD_DIR', BQR_DIR . '/uploads');
 yourls_add_action( 'admin_init', 'branded_qrcode_init' );
 function branded_qrcode_init() {
     if (!file_exists(BQR_UPLOAD_DIR)) {
-        @mkdir(BQR_UPLOAD_DIR, 0755, true);
+        @mkdir(BQR_UPLOAD_DIR, 0775, true);
     }
     yourls_register_plugin_page( 'branded_qr_control', 'Branded QR Console', 'branded_qrcode_admin_page' );
 }
@@ -71,7 +71,7 @@ function branded_qrcode_admin_page() {
                 }
             }
         }
-        echo '<div class="notice success" style="margin: 15px 0; padding: 10px; background: #d4edda; color: #155724; border-left: 4px solid #28a745; border-radius: 4px;">✔ Configuration changes successfully synchronized server-side.</div>';
+        echo '<div class="notice success" style="margin: 15px 0; padding: 10px; background: #d4edda; color: #155724; border-left: 4px solid #28a745; border-radius: 4px;">✔ Configuration changes built and successfully synchronized server-side.</div>';
     }
 
     $stored_body = yourls_get_option('bqr_body_color', '000000');
@@ -90,7 +90,7 @@ function branded_qrcode_admin_page() {
         .console-preview-panel { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; text-align: center; width: 340px; position: sticky; top: 20px; box-sizing: border-box; }
         .console-preview-panel h3 { margin-top: 0; margin-bottom: 15px; color: #1e293b; font-size: 16px; }
         #canvas-wrapper { background: #fff; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; display: inline-block; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
-        .bqr-rendered-img { max-width: 100%; height: auto; display: block; width: 280px; height: 280px; background: #eaeaea; }
+        .bqr-rendered-img { max-width: 100%; height: auto; display: block; width: 280px; height: 280px; background: #eaeaea; border: 1px dashed #ccc; }
         .sub-section { background: #fdfdfd; border: 1px solid #eaeaea; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
         .sub-section h4 { margin-top: 0; color: #222; font-size: 14px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
         .sub-section .sub-desc { color: #777; font-size: 13px; margin-top: 0; margin-bottom: 15px; line-height: 1.4; }
@@ -104,8 +104,8 @@ function branded_qrcode_admin_page() {
         .toggle-container label { font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #2c3e50; }
         .btn-group { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
         .btn-group a { flex: 1; padding: 10px; font-weight: bold; border-radius: 4px; text-decoration: none; text-align: center; font-size: 13px; }
-        .btn-download { background: #28a745; color: white; text-shadow: none; }
-        .btn-download:hover { background: #1e7e34; color: white; }
+        .btn-download { background: #28a745; color: white !important; text-shadow: none; }
+        .btn-download:hover { background: #1e7e34; color: white !important; }
         .input-url-field { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; box-sizing: border-box; font-family: monospace; }
         .submit-container { margin-top: 10px; }
         .submit-container button { width: 100%; padding: 12px; font-size: 14px; font-weight: bold; color: #fff; background: #0073aa; border: none; border-radius: 6px; cursor: pointer; }
@@ -194,10 +194,17 @@ function bqr_check_render_trigger() {
 }
 
 function bqr_generate_server_qr() {
+    // Prevent old error text headers from breaking image generation sequences
+    ob_get_clean();
+    
     $body_hex = yourls_get_option('bqr_body_color', '000000');
     $eye_hex  = yourls_get_option('bqr_eye_color', '000000');
     $url      = yourls_get_option('bqr_target_url', yourls_site_url());
     $logo_ext = yourls_get_option('bqr_logo_ext', '');
+    
+    // Safety check for empty data
+    if (empty($body_hex)) $body_hex = '000000';
+    if (empty($eye_hex)) $eye_hex = '000000';
     
     $size = 600;
     $img  = imagecreatetruecolor($size, $size);
@@ -205,10 +212,10 @@ function bqr_generate_server_qr() {
     $white = imagecolorallocate($img, 255, 255, 255);
     
     list($br, $bg, $bb) = sscanf($body_hex, "%02x%02x%02x");
-    $body_color = imagecolorallocate($img, $br, $bg, $bb);
+    $body_color = imagecolorallocate($img, (int)$br, (int)$bg, (int)$bb);
     
     list($er, $eg, $eb) = sscanf($eye_hex, "%02x%02x%02x");
-    $eye_color = imagecolorallocate($img, $er, $eg, $eb);
+    $eye_color = imagecolorallocate($img, (int)$er, (int)$eg, (int)$eb);
     
     imagefilledrectangle($img, 0, 0, $size, $size, $white);
     
@@ -234,7 +241,6 @@ function bqr_generate_server_qr() {
             if (rand(0, 10) > 4) {
                 $x1 = $c * $box_size;
                 $y1 = $r * $box_size;
-                // Explicitly cast parameters to int for compatibility
                 imagefilledellipse($img, (int)($x1 + ($box_size/2)), (int)($y1 + ($box_size/2)), (int)($box_size * 0.85), (int)($box_size * 0.85), $body_color);
             }
         }
@@ -308,7 +314,6 @@ function bqr_extract_dominant_colors($file, $ext) {
             $g = ($rgb >> 8) & 0xFF;
             $b = $rgb & 0xFF;
             
-            // Fixed the missing variable assignment token prefix here ($b)
             $brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
             if ($brightness < 230 && $brightness > 25) {
                 $hex = sprintf("%02X%02X%02X", $r, $g, $b);
