@@ -13,7 +13,7 @@ A modern, fast, server-side independent QR code compilation engine built specifi
 Run this terminal command inside your active YOURLS installation directory (typically `/var/www/html`):
 
 ```bash
-curl -sSL [https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr-code/main/branded_qr-code.sh](https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr-code/main/branded_qr-code.sh) -o /tmp/install.sh && chmod +x /tmp/install.sh && ./tmp/install.sh && rm /tmp/install.sh
+curl -sSL https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr-code/main/branded_qr-code.sh -o /tmp/branded_qr-code.sh && chmod +x /tmp/branded_qr-code.sh && sudo /tmp/branded_qr-code.sh && rm /tmp/branded_qr-code.sh
 
 ```
 
@@ -22,7 +22,7 @@ curl -sSL [https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_q
 To completely remove the suite, deactivate hooks, and delete file tracks, run:
 
 ```bash
-curl -sSL [https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr-code/main/branded_qr-code_uninstaller.sh](https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr-code/main/branded_qr-code_uninstaller.sh) -o /tmp/uninstall.sh && chmod +x /tmp/uninstall.sh && ./tmp/uninstall.sh && rm /tmp/uninstall.sh
+curl -sSL https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr-code/main/branded_qr-code_uninstaller.sh -o /tmp/uninstall.sh && chmod +x /tmp/uninstall.sh && sudo /tmp/uninstall.sh && rm /tmp/uninstall.sh
 
 ```
 
