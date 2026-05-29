@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# Branded QR Code Suite - High Compatibility Installer
+# Branded QR Code Suite - High Compatibility Precision Installer
 # ==============================================================================
 
 set -e
@@ -27,7 +27,7 @@ fi
 
 echo "✔ Confirmed YOURLS Root: $YOURLS_ROOT"
 
-# 2. Complete Legacy Cleanup (Purging old detached architecture)
+# 2. Complete Legacy & Broken Plugin Cleanup 
 if [ -d "$YOURLS_ROOT/qr" ]; then
     echo "🧹 Removing legacy /qr web directories..."
     sudo rm -rf "$YOURLS_ROOT/qr"
@@ -35,20 +35,25 @@ fi
 
 if [ -f "$YOURLS_ROOT/.htaccess" ]; then
     echo "🔀 Cleaning legacy rewrite footprints from .htaccess..."
-    # Drop any matching .qr routing rules safely without breaking core blocks
     sudo sed -i '/rewrite.*qr/d' "$YOURLS_ROOT/.htaccess" || true
+fi
+
+# Clear any bad folder names or cached configurations without metadata markers
+if [ -d "$YOURLS_ROOT/user/plugins/yourls-local-branded_qr-code" ]; then
+    sudo rm -rf "$YOURLS_ROOT/user/plugins/yourls-local-branded_qr-code"
 fi
 
 # 3. Create Clean Local Extension Infrastructure Workspace
 PLUGIN_DIR="$YOURLS_ROOT/user/plugins/$TARGET_PLUGIN_NAME"
-echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
+echo "📂 Rebuilding Workspace at: $PLUGIN_DIR"
+sudo rm -rf "$PLUGIN_DIR"
 sudo mkdir -p "$PLUGIN_DIR"
 
-# 4. Fetch Distribution Deliverables Natively
+# 4. Fetch Distribution Deliverables with Exact Code Properties
 echo "📥 Downloading production-ready script manifests..."
-sudo curl -sSL "$REPO_URL/user/plugins/$TARGET_PLUGIN_NAME/plugin.php" -o "$PLUGIN_DIR/plugin.php"
-sudo curl -sSL "$REPO_URL/user/plugins/$TARGET_PLUGIN_NAME/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
-sudo curl -sSL "$REPO_URL/user/plugins/$TARGET_PLUGIN_NAME/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
+sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/user/plugins/$TARGET_PLUGIN_NAME/plugin.php" -o "$PLUGIN_DIR/plugin.php"
+sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/user/plugins/$TARGET_PLUGIN_NAME/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
+sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/user/plugins/$TARGET_PLUGIN_NAME/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
 
 # 5. Set Safe Server Permission Profiles
 echo "🔒 Enforcing standard Linux directory authorization profiles..."
@@ -56,6 +61,6 @@ sudo chown -R www-data:www-data "$PLUGIN_DIR"
 sudo chmod -R 755 "$PLUGIN_DIR"
 
 echo "====================================================="
-echo "🎉 Branded QR Suite successfully loaded!"
+echo "🎉 Branded QR Suite successfully reloaded!"
 echo "👉 Navigate to 'Manage Plugins' to activate it."
 echo "====================================================="
