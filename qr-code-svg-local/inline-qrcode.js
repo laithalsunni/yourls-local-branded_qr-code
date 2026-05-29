@@ -1,61 +1,75 @@
 /**
- * Branded QR Engine - Administrative UI Hook Script
+ * Branded QR Engine - Complete Dashboard UI Render Hook
  */
 (function($) {
-    function inject_branded_qr_interface() {
-        // Find sharebox target container panels
+    function process_branded_qr_injection() {
+        // Find the native target share box element layout
         var $shareboxes = $("#shareboxes");
         if (!$shareboxes.length) {
             return;
         }
 
-        // Fetch values from either standalone page inputs or ajax dashboard panels
-        var generatedShortUrl = $('#copylink').val() || $('#share_link').val();
-        if (!generatedShortUrl) {
+        // Pull active link values from standard share inputs or dynamic AJAX dashboard creators
+        var targetShortUrl = $('#copylink').val() || $('#share_link').val();
+        if (!targetShortUrl) {
             return;
         }
 
-        // Prevent duplicate generation if already injected on the screen
-        if ($('#branded-qr-hook-block').length > 0) {
-            // Check if the link has changed (i.e., user shortened another link sequentially)
-            var currentLinkedUrl = $('#branded-qr-hook-block a').data('shorturl');
-            if (currentLinkedUrl === generatedShortUrl) {
-                return; // Everything is correct and up-to-date
-            } else {
-                $('#branded-qr-hook-block').remove(); // Link mismatch, strip and rebuild
+        // Manage clean target refreshes on multiple sequential shortens
+        if ($('#branded-qr-dashboard-wrapper').length > 0) {
+            var activeUrlString = $('#branded-qr-dashboard-wrapper').attr('data-rendered-link');
+            if (activeUrlString === targetShortUrl) {
+                return; // Currently showing correct QR link data
             }
+            $('#branded-qr-dashboard-wrapper').remove(); // Clear stale link payload
         }
 
-        // Determine destination URL
-        var studioPath = window.BRANDED_QR_WEBROOT || (window.location.origin + '/qr/index.html');
-        var customizedStudioUrl = studioPath + '?url=' + encodeURIComponent(generatedShortUrl);
+        // Build container payload structural boundaries
+        var customStudioUrl = window.BRANDED_QR_STUDIO_PATH + '?url=' + encodeURIComponent(targetShortUrl);
         
-        // QR image placeholder container
-        var placeholderThumbUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent(generatedShortUrl);
-        
-        var htmlPayload = 
-            "<div id='branded-qr-hook-block' class='branded-share-qr share' style='float: right; text-align: center; margin-left: 15px;'>" +
-            "  <a href='" + customizedStudioUrl + "' data-shorturl='" + generatedShortUrl + "' title='⚡ Click to customize and brand this QR Code!' target='_blank' style='text-decoration: none; display: block;'>" +
-            "    <img src='" + placeholderThumbUrl + "' alt='Branded QR Studio' style='width: 100px; height: 100px; border: 1px solid #e1e4e6; border-radius: 4px; padding: 4px; background: #fff;' />" +
-            "    <span style='display:block; font-size:11px; color:#0073aa; font-weight:bold; margin-top:5px; text-decoration:none;'>⚡ Brand QR Code</span>" +
+        var structuralLayout = 
+            "<div id='branded-qr-dashboard-wrapper' data-rendered-link='" + targetShortUrl + "' class='share' style='float: right; text-align: center; margin: 0 10px 15px 15px; padding: 5px;'>" +
+            "  <a href='" + customStudioUrl + "' title='⚡ Click to customize and brand this QR Code!' target='_blank' style='text-decoration: none !important; display: block; border: none;'>" +
+            "    <div id='branded-qr-canvas-render' style='width: 100px; height: 100px; padding: 6px; background: #fff; border: 1px solid #ced4da; border-radius: 6px; display: inline-block;'></div>" +
+            "    <span style='display: block; font-size: 11px; color: #0073aa; font-weight: bold; margin-top: 6px; font-family: sans-serif; text-decoration: none !important;'>⚡ Brand QR Code</span>" +
             "  </a>" +
             "</div>";
 
-        $shareboxes.append(htmlPayload);
+        // Append to wrapper pane layout profile
+        $shareboxes.append(structuralLayout);
         $shareboxes.css({"display": "block", "overflow": "hidden"});
+
+        // Compile clean native vector modules straight inside your dashboard view
+        if (typeof QRCode !== 'undefined') {
+            try {
+                new QRCode(document.getElementById("branded-qr-canvas-render"), {
+                    text: targetShortUrl,
+                    width: 100,
+                    height: 100,
+                    correctLevel: 3 // High density error correction profile
+                });
+                
+                // Force layout images to scale cleanly within vector parameters
+                $("#branded-qr-canvas-render img").css({"width": "100px", "height": "100px", "display": "block"});
+            } catch (canvasErr) {
+                console.log("Branded QR Engine Matrix Exception: " + canvasErr.message);
+            }
+        } else {
+            // Fallback text helper string if core script dependencies are unreachable
+            $("#branded-qr-canvas-render").html("<div style='font-size:10px; color:red; padding-top:35px;'>Script Missing</div>");
+        }
     }
 
-    // Bind seamlessly to DOM load events
+    // Bind to page execution lifecycles safely
     $(document).ready(function() {
-        inject_branded_qr_interface();
+        process_branded_qr_injection();
     });
 
-    // Capture standard YOURLS admin panel modifications safely
     $(document).ajaxComplete(function() {
-        inject_branded_qr_interface();
+        process_branded_qr_injection();
     });
-    
-    // Fallback interval loop running every 500ms to instantly catch dynamic actions
-    setInterval(inject_branded_qr_interface, 500);
+
+    // Throttled 400ms polling loop to track and catch hidden tab changes
+    setInterval(process_branded_qr_injection, 400);
 
 })(jQuery);
