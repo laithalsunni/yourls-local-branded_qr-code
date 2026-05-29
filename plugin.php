@@ -3,18 +3,16 @@
 Plugin Name: Branded QR Code Suite
 Plugin URI: https://github.com/laithalsunni/yourls-local-branded_qr-code
 Description: Highly customizable, vector-perfect branded QR codes matching logo palettes dynamically via server-side GD engine processing and permanent storage routing.
-Version: 4.0
+Version: 4.1
 Author: Laith Alsunni
 Author URI: https://github.com/laithalsunni
 */
 
 if( !defined( 'YOURLS_ABSPATH' ) ) die();
 
-// Define local directory environments for persistent file operations
 define('BQR_DIR', dirname(__FILE__));
 define('BQR_UPLOAD_DIR', BQR_DIR . '/uploads');
 
-// Initialize local workspace parameters securely on engine bootstrap
 yourls_add_action( 'admin_init', 'branded_qrcode_init' );
 function branded_qrcode_init() {
     if (!file_exists(BQR_UPLOAD_DIR)) {
@@ -38,7 +36,6 @@ function branded_qrcode_row_action( $actions ) {
 function branded_qrcode_admin_page() {
     $plugin_url = yourls_plugin_url( dirname( __FILE__ ) );
     
-    // Handle persistent data state configuration modifications on Server-side PostBack Request
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_bqr_settings') {
         yourls_verify_nonce( 'bqr_settings_nonce' );
         
@@ -50,7 +47,6 @@ function branded_qrcode_admin_page() {
         yourls_update_option('bqr_eye_color', $eye_color ?: '000000');
         yourls_update_option('bqr_target_url', $target_url);
         
-        // Process local file system movement requests if new brand identifier assets are uploaded
         if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK) {
             $file_info = pathinfo($_FILES['logo_file']['name']);
             $extension = strtolower($file_info['extension']);
@@ -58,7 +54,6 @@ function branded_qrcode_admin_page() {
             
             if (in_array($extension, $allowed)) {
                 $target_path = BQR_UPLOAD_DIR . '/persisted_brand_logo.' . $extension;
-                // Wipe any old files clean to ensure single entity context routing integrity
                 foreach ($allowed as $ext) {
                     @unlink(BQR_UPLOAD_DIR . '/persisted_brand_logo.' . $ext);
                 }
@@ -66,7 +61,6 @@ function branded_qrcode_admin_page() {
                     yourls_update_option('bqr_logo_path', $target_path);
                     yourls_update_option('bqr_logo_ext', $extension);
                     
-                    // Automatically extract base hex color values if structural sampling toggle flag state is checked
                     if (isset($_POST['auto_color']) && $_POST['auto_color'] == '1') {
                         $sampled_colors = bqr_extract_dominant_colors($target_path, $extension);
                         if ($sampled_colors) {
@@ -77,17 +71,15 @@ function branded_qrcode_admin_page() {
                 }
             }
         }
-        echo '<div class="notice success" style="margin: 15px 0; padding: 10px; background: #d4edda; color: #155724; border-left: 4px solid #28a745; border-radius: 4px;">✔ Configuration changes built and successfully synchronized server-side.</div>';
+        echo '<div class="notice success" style="margin: 15px 0; padding: 10px; background: #d4edda; color: #155724; border-left: 4px solid #28a745; border-radius: 4px;">✔ Configuration changes successfully synchronized server-side.</div>';
     }
 
-    // Pull current values from option tables
     $stored_body = yourls_get_option('bqr_body_color', '000000');
     $stored_eye  = yourls_get_option('bqr_eye_color', '000000');
     $stored_url  = yourls_get_option('bqr_target_url', yourls_site_url() . '/example');
     $logo_ext    = yourls_get_option('bqr_logo_ext', '');
     $has_logo    = !empty($logo_ext) && file_exists(BQR_UPLOAD_DIR . '/persisted_brand_logo.' . $logo_ext);
     
-    // Auto-populate target URL if explicitly provided in query strings
     if (isset($_GET['url'])) {
         $stored_url = esc_url($_GET['url']);
     }
@@ -112,17 +104,15 @@ function branded_qrcode_admin_page() {
         .toggle-container label { font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #2c3e50; }
         .btn-group { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
         .btn-group a { flex: 1; padding: 10px; font-weight: bold; border-radius: 4px; text-decoration: none; text-align: center; font-size: 13px; }
-        .btn-primary { background: #0073aa; color: #fff; border: none; }
-        .btn-primary:hover { background: #005177; cursor: pointer; }
-        .btn-download { background: #28a745; color: white; }
-        .btn-download:hover { background: #1e7e34; }
+        .btn-download { background: #28a745; color: white; text-shadow: none; }
+        .btn-download:hover { background: #1e7e34; color: white; }
         .input-url-field { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; box-sizing: border-box; font-family: monospace; }
         .submit-container { margin-top: 10px; }
         .submit-container button { width: 100%; padding: 12px; font-size: 14px; font-weight: bold; color: #fff; background: #0073aa; border: none; border-radius: 6px; cursor: pointer; }
         .submit-container button:hover { background: #005177; }
     </style>
 
-    <h2>Branded QR Suite Configuration Console (Server Execution Environment)</h2>
+    <h2>Branded QR Suite Configuration Console</h2>
     <p class="description">Locally composite high-density functional structures without exposing transaction data vectors to client DOM structures.</p>
 
     <form method="post" enctype="multipart/form-data">
@@ -135,7 +125,7 @@ function branded_qrcode_admin_page() {
                     <h4>0. Target Tracking Workspace Link</h4>
                     <p class="sub-desc">Define the destination payload data string context safely.</p>
                     <div class="form-group">
-                        <input type="text" name="target_url" id="targetShortUrl" class="input-url-field" value="<?php echo var_export($stored_url, true); ?>">
+                        <input type="text" name="target_url" id="targetShortUrl" class="input-url-field" value="<?php echo esc_attr($stored_url); ?>">
                     </div>
                 </div>
 
@@ -195,7 +185,6 @@ function branded_qrcode_admin_page() {
     <?php
 }
 
-// Intercept execution loop lifecycle to pipeline graphic processing outputs on demand
 yourls_add_action( 'plugins_loaded', 'bqr_check_render_trigger' );
 function bqr_check_render_trigger() {
     if (isset($_GET['page']) && $_GET['page'] === 'branded_qr_control' && isset($_GET['bqr_render'])) {
@@ -204,20 +193,15 @@ function bqr_check_render_trigger() {
     }
 }
 
-/**
- * Server-Side Engine Matrix Visual Generator via PHP GD Pipeline
- */
 function bqr_generate_server_qr() {
     $body_hex = yourls_get_option('bqr_body_color', '000000');
     $eye_hex  = yourls_get_option('bqr_eye_color', '000000');
     $url      = yourls_get_option('bqr_target_url', yourls_site_url());
     $logo_ext = yourls_get_option('bqr_logo_ext', '');
     
-    // Instantiate background surface frame canvas size variables
     $size = 600;
     $img  = imagecreatetruecolor($size, $size);
     
-    // Allocate RGB Palette arrays safely
     $white = imagecolorallocate($img, 255, 255, 255);
     
     list($br, $bg, $bb) = sscanf($body_hex, "%02x%02x%02x");
@@ -228,26 +212,21 @@ function bqr_generate_server_qr() {
     
     imagefilledrectangle($img, 0, 0, $size, $size, $white);
     
-    // Compile positional reference layout tracks simulation block algorithms
     $cells = 33; 
-    $box_size = round($size / $cells);
+    $box_size = (int)round($size / $cells);
     
-    // Render tracking eye alignment rings on the server
     $eyes = array(
         array(0, 0),
         array(($cells - 7) * $box_size, 0),
         array(0, ($cells - 7) * $box_size)
     );
     
-    // Populate raw data matrix points programmatically
     srand(crc32($url));
     for ($r = 0; $r < $cells; $r++) {
         for ($c = 0; $c < $cells; $c++) {
-            // Isolate protection constraints boundaries away from primary mapping rings
             if (($r < 7 && $c < 7) || ($r < 7 && $c >= $cells - 7) || ($r >= $cells - 7 && $c < 7)) {
                 continue;
             }
-            // Clear out center area pocket coordinates for corporate badges
             if ($r >= 11 && $r <= 21 && $c >= 11 && $c <= 21) {
                 continue;
             }
@@ -255,21 +234,18 @@ function bqr_generate_server_qr() {
             if (rand(0, 10) > 4) {
                 $x1 = $c * $box_size;
                 $y1 = $r * $box_size;
-                imagefilledellipse($img, $x1 + ($box_size/2), $y1 + ($box_size/2), $box_size * 0.85, $box_size * 0.85, $body_color);
+                // Explicitly cast parameters to int for compatibility
+                imagefilledellipse($img, (int)($x1 + ($box_size/2)), (int)($y1 + ($box_size/2)), (int)($box_size * 0.85), (int)($box_size * 0.85), $body_color);
             }
         }
     }
     
-    // Composite foundational tracking eye systems securely
     foreach ($eyes as $eye) {
-        // Outer eye matrix ring block positioning 
         imagefilledrectangle($img, $eye[0], $eye[1], $eye[0] + (7 * $box_size), $eye[1] + (7 * $box_size), $eye_color);
         imagefilledrectangle($img, $eye[0] + $box_size, $eye[1] + $box_size, $eye[0] + (6 * $box_size) - 1, $eye[1] + (6 * $box_size) - 1, $white);
-        // Inner pixel target dot center coordinate processing
         imagefilledrectangle($img, $eye[0] + (2 * $box_size), $eye[1] + (2 * $box_size), $eye[0] + (5 * $box_size) - 1, $eye[1] + (5 * $box_size) - 1, $body_color);
     }
     
-    // Composite persistent brand identifier file systems straight into active middle layer coordinates safely
     if (!empty($logo_ext)) {
         $logo_file = BQR_UPLOAD_DIR . '/persisted_brand_logo.' . $logo_ext;
         if (file_exists($logo_file)) {
@@ -285,13 +261,12 @@ function bqr_generate_server_qr() {
                 $lw = imagesx($logo_src);
                 $lh = imagesy($logo_src);
                 
-                $target_logo_w = round($size * 0.22);
-                $target_logo_h = round($lh * ($target_logo_w / $lw));
+                $target_logo_w = (int)round($size * 0.22);
+                $target_logo_h = (int)round($lh * ($target_logo_w / $lw));
                 
-                $lx = ($size - $target_logo_w) / 2;
-                $ly = ($size - $target_logo_h) / 2;
+                $lx = (int)(($size - $target_logo_w) / 2);
+                $ly = (int)(($size - $target_logo_h) / 2);
                 
-                // Construct clean backing platform layer context masking profiles explicitly
                 imagefilledrectangle($img, $lx - 10, $ly - 10, $lx + $target_logo_w + 10, $ly + $target_logo_h + 10, $white);
                 imagecopyresampled($img, $logo_src, $lx, $ly, 0, 0, $target_logo_w, $target_logo_h, $lw, $lh);
                 imagedestroy($logo_src);
@@ -299,7 +274,6 @@ function bqr_generate_server_qr() {
         }
     }
     
-    // Dispatch stream context configurations 
     if (isset($_GET['download']) && $_GET['download'] == '1') {
         header('Content-Description: File Transfer');
         header('Content-Type: image/png');
@@ -313,9 +287,6 @@ function bqr_generate_server_qr() {
     imagedestroy($img);
 }
 
-/**
- * Server side color extraction processing handler via GD channel loops
- */
 function bqr_extract_dominant_colors($file, $ext) {
     $src = null;
     switch ($ext) {
@@ -326,7 +297,6 @@ function bqr_extract_dominant_colors($file, $ext) {
     }
     if (!$src) return false;
     
-    // Scale tracking context matrix components down to parse core sample fields instantly
     $thumb = imagecreatetruecolor(10, 10);
     imagecopyresampled($thumb, $src, 0, 0, 0, 0, 10, 10, imagesx($src), imagesy($src));
     
@@ -338,8 +308,8 @@ function bqr_extract_dominant_colors($file, $ext) {
             $g = ($rgb >> 8) & 0xFF;
             $b = $rgb & 0xFF;
             
-            // Filter out edge background whites or pitch dark artifacts
-            $brightness = ($r * 299 + $g * 587 + b * 114) / 1000;
+            // Fixed the missing variable assignment token prefix here ($b)
+            $brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
             if ($brightness < 230 && $brightness > 25) {
                 $hex = sprintf("%02X%02X%02X", $r, $g, $b);
                 $colors[] = $hex;
