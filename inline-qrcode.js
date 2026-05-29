@@ -1,17 +1,35 @@
 /**
  * Branded QR Code Suite - Local Coordinate Engine
+ * Fixed eye rendering + auto-color extraction
  */
+
+// Polyfill for CanvasRenderingContext2D.roundRect
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.moveTo(x+r, y);
+        this.lineTo(x+w-r, y);
+        this.quadraticCurveTo(x+w, y, x+w, y+r);
+        this.lineTo(x+w, y+h-r);
+        this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+        this.lineTo(x+r, y+h);
+        this.quadraticCurveTo(x, y+h, x, y+h-r);
+        this.lineTo(x, y+r);
+        this.quadraticCurveTo(x, y, x+r, y);
+        return this;
+    };
+}
 
 function log(msg) {
     var logBox = jQuery('#debug-log');
-    if(logBox.length > 0) {
-        logBox.text("Status Log: " + msg);
-    }
+    if (logBox.length) logBox.text("Status: " + msg);
     console.log(msg);
 }
 
 function handleTextColors(val, type) {
-    if(val.length === 6) {
+    val = val.replace('#', '');
+    if (val.length === 6) {
         jQuery('#' + type + 'ColorPicker').val("#" + val);
         localStorage.setItem('qr_' + type + '_hex', val);
         renderBrandedQR();
@@ -19,9 +37,9 @@ function handleTextColors(val, type) {
 }
 
 function handlePickerColors(val, type) {
-    var directHex = val.replace('#', '').toUpperCase();
-    jQuery('#' + type + 'ColorInput').val(directHex);
-    localStorage.setItem('qr_' + type + '_hex', directHex);
+    var hex = val.replace('#', '').toUpperCase();
+    jQuery('#' + type + 'ColorInput').val(hex);
+    localStorage.setItem('qr_' + type + '_hex', hex);
     renderBrandedQR();
 }
 
@@ -30,16 +48,13 @@ function handleLogoUpload(event) {
     if (!file) return;
     var reader = new FileReader();
     reader.onload = function(e) {
-        var savedLogoData = e.target.result;
-        localStorage.setItem('qr_logo_base64', savedLogoData);
-        var preview = jQuery('#logoPreview');
-        if(preview.length > 0) {
-            preview.attr('src', savedLogoData).show();
-        }
-        log("New logo asset structured inside browser memory cache.");
-        
+        var logoData = e.target.result;
+        localStorage.setItem('qr_logo_base64', logoData);
+        jQuery('#logoPreview').attr('src', logoData).show();
+        log("Logo loaded into memory.");
+
         if (jQuery('#autoColorToggle').is(':checked')) {
-            extractColorsFromLogo(savedLogoData);
+            extractColorsFromLogo(logoData);
         } else {
             renderBrandedQR();
         }
@@ -51,49 +66,38 @@ function extractColorsFromLogo(base64Img) {
     var img = new Image();
     img.src = base64Img;
     img.onload = function() {
-        var sampleCanvas = document.createElement('canvas');
-        var sampleCtx = sampleCanvas.getContext('2d');
-        sampleCanvas.width = 50;
-        sampleCanvas.height = 50;
-        sampleCtx.drawImage(img, 0, 0, 50, 50);
-        
-        var imgData = sampleCtx.getImageData(0, 0, 50, 50).data;
-        var colors = [];
-        
-        for (var i = 0; i < imgData.length; i += 16) {
-            var r = imgData[i];
-            var g = imgData[i+1];
-            var b = imgData[i+2];
-            var a = imgData[i+3];
-            
-            if (a > 200) { 
-                var brightness = (r * 299 + g * 587 + b * 114) / 1000;
-                if (brightness < 240 && brightness > 15) {
-                    colors.push({r: r, g: g, b: b});
-                }
+        var canvas = document.createElement('canvas');
+        canvas.width = 50;
+        canvas.height = 50;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 50, 50);
+        var data = ctx.getImageData(0, 0, 50, 50).data;
+        var colorMap = {};
+        for (var i = 0; i < data.length; i += 4) {
+            var r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+            if (a < 200) continue; // skip transparent
+            var brightness = (r*299 + g*587 + b*114) / 1000;
+            if (brightness < 240 && brightness > 15) {
+                var hex = ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+                colorMap[hex] = (colorMap[hex] || 0) + 1;
             }
         }
-        
-        if (colors.length >= 2) {
-            var componentToHex = function(c) {
-                var hex = c.toString(16);
-                return hex.length == 1 ? "0" + hex : hex;
-            };
-            var toHex = function(color) {
-                return (componentToHex(color.r) + componentToHex(color.g) + componentToHex(color.b)).toUpperCase();
-            };
-            
-            var primaryColorHex = toHex(colors[0]);
-            var secondaryColorHex = toHex(colors[Math.floor(colors.length / 2)]);
-            
-            jQuery('#bodyColorInput').val(primaryColorHex);
-            jQuery('#bodyColorPicker').val("#" + primaryColorHex);
-            jQuery('#eyeColorInput').val(secondaryColorHex);
-            jQuery('#eyeColorPicker').val("#" + secondaryColorHex);
-            
-            localStorage.setItem('qr_body_hex', primaryColorHex);
-            localStorage.setItem('qr_eye_hex', secondaryColorHex);
-            log("🎨 Color palette successfully sampled from your logo image.");
+        var sorted = Object.keys(colorMap).sort(function(a,b){ return colorMap[b]-colorMap[a]; });
+        if (sorted.length >= 2) {
+            var primary = sorted[0];
+            var secondary = sorted[1];
+            jQuery('#bodyColorInput').val(primary);
+            jQuery('#bodyColorPicker').val("#" + primary);
+            jQuery('#eyeColorInput').val(secondary);
+            jQuery('#eyeColorPicker').val("#" + secondary);
+            localStorage.setItem('qr_body_hex', primary);
+            localStorage.setItem('qr_eye_hex', secondary);
+            log("Auto colors extracted: body=" + primary + ", eye=" + secondary);
+        } else if (sorted.length === 1) {
+            jQuery('#bodyColorInput').val(sorted[0]);
+            jQuery('#bodyColorPicker').val("#" + sorted[0]);
+            localStorage.setItem('qr_body_hex', sorted[0]);
+            log("Auto color extracted (only one dominant)");
         }
         renderBrandedQR();
     };
@@ -102,142 +106,125 @@ function extractColorsFromLogo(base64Img) {
 function renderBrandedQR() {
     var canvas = document.getElementById('qrCanvas');
     if (!canvas) return;
-    
-    log("Accessing verified local engine components...");
     var targetLink = jQuery('#targetShortUrl').val() || window.location.href;
     var bodyHex = "#" + (jQuery('#bodyColorInput').val() || "000000");
     var eyeHex = "#" + (jQuery('#eyeColorInput').val() || "000000");
-    var savedLogoData = localStorage.getItem('qr_logo_base64') || '';
-    
+    var savedLogo = localStorage.getItem('qr_logo_base64');
+
     var ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (typeof QRCode === 'undefined') {
-        log("❌ Local Dependency Error: 'qrcode.min.js' failed to parse correctly.");
+        log("QRCode library missing");
         return;
     }
 
     try {
-        // Run a lightweight headless matrix calculation pass via our core library
-        var rawEngine = new QRCode(document.createElement('div'), {
+        var tempDiv = document.createElement('div');
+        var qr = new QRCode(tempDiv, {
             text: targetLink,
             width: 500,
             height: 500,
             correctLevel: QRCode.CorrectLevel.H
         });
-
         var modules = null;
-        if (rawEngine._oQRCode && rawEngine._oQRCode.modules) {
-            modules = rawEngine._oQRCode.modules;
-        }
+        if (qr._oQRCode && qr._oQRCode.modules) modules = qr._oQRCode.modules;
+        if (!modules) throw new Error("Cannot extract QR matrix");
 
-        if (!modules) {
-            log("❌ Matrix Extraction Error: Structure mapping layout mismatch.");
-            return;
-        }
+        var size = modules.length;
+        var cell = canvas.width / size;
+        log("Drawing " + size + "x" + size + " modules");
 
-        var moduleCount = modules.length;
-        var cellSize = canvas.width / moduleCount;
-        log("Data matrix compiled successfully (" + moduleCount + "x" + moduleCount + "). Drawing elements...");
-
-        // 1. Paint structural body data bits using smooth dots
+        // --- Draw data modules (skip eyes & center area) ---
+        var centerStart = Math.floor(size * 0.34);
+        var centerEnd = Math.ceil(size * 0.66);
         ctx.fillStyle = bodyHex;
-        for (var row = 0; row < moduleCount; row++) {
-            for (var col = 0; col < moduleCount; col++) {
-                if (modules[row][col]) {
-                    // Skip coordinates allocated to functional positioning eye structures
-                    if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
-                        continue;
-                    }
-                    // Calculate a geometric safe boundary center zone to isolate the logo overlay
-                    var centerStart = Math.floor(moduleCount * 0.34);
-                    var centerEnd = Math.ceil(moduleCount * 0.66);
-                    if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) {
-                        continue;
-                    }
-                    
-                    ctx.beginPath();
-                    ctx.arc((col * cellSize) + (cellSize / 2), (row * cellSize) + (cellSize / 2), (cellSize / 2) * 0.88, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
+        for (var row = 0; row < size; row++) {
+            for (var col = 0; col < size; col++) {
+                if (!modules[row][col]) continue;
+                // Skip the three 7x7 eye zones
+                if ((row < 7 && col < 7) ||
+                    (row < 7 && col >= size-7) ||
+                    (row >= size-7 && col < 7)) continue;
+                // Skip center area where logo will go
+                if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) continue;
+
+                ctx.beginPath();
+                ctx.arc(col * cell + cell/2, row * cell + cell/2, cell * 0.88, 0, 2*Math.PI);
+                ctx.fill();
             }
         }
 
-        // 2. Compute and paint styled rounded tracking eyes directly into context canvases
-        var eyeCoordinates = [
+        // --- Draw three position detection eyes (rounded) ---
+        var eyePositions = [
             { x: 0, y: 0 },
-            { x: (moduleCount - 7) * cellSize, y: 0 },
-            { x: 0, y: (moduleCount - 7) * cellSize }
+            { x: size-7, y: 0 },
+            { x: 0, y: size-7 }
         ];
-
-        eyeCoordinates.forEach(function(pos) {
+        var eyeSize = 7 * cell;
+        eyePositions.forEach(function(pos) {
+            var x = pos.x * cell, y = pos.y * cell;
+            // Outer ring
             ctx.fillStyle = eyeHex;
-            ctx.getTransform ? ctx.beginPath() : null; 
-            if(typeof ctx.roundRect === "function") {
-                ctx.beginPath(); ctx.roundRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize, cellSize * 1.5); ctx.fill();
-                ctx.fillStyle = "#FFFFFF"; ctx.beginPath(); ctx.roundRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize, cellSize * 0.8); ctx.fill();
-                ctx.fillStyle = bodyHex; ctx.beginPath(); ctx.roundRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize, cellSize * 0.4); ctx.fill();
-            } else {
-                // Secure canvas compatibility layout fallback mappings
-                ctx.fillRect(pos.x, pos.y, 7 * cellSize, 7 * cellSize);
-                ctx.fillStyle = "#FFFFFF"; ctx.fillRect(pos.x + cellSize, pos.y + cellSize, 5 * cellSize, 5 * cellSize);
-                ctx.fillStyle = bodyHex; ctx.fillRect(pos.x + (2 * cellSize), pos.y + (2 * cellSize), 3 * cellSize, 3 * cellSize);
-            }
+            ctx.beginPath();
+            ctx.roundRect(x, y, eyeSize, eyeSize, cell * 1.2);
+            ctx.fill();
+            // Inner white ring
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.roundRect(x + cell, y + cell, 5*cell, 5*cell, cell * 0.8);
+            ctx.fill();
+            // Core pupil
+            ctx.fillStyle = bodyHex;
+            ctx.beginPath();
+            ctx.roundRect(x + 2*cell, y + 2*cell, 3*cell, 3*cell, cell * 0.4);
+            ctx.fill();
         });
 
-        // 3. Render brand identity files directly center stage over matrix rows
-        if (savedLogoData) {
-            log("Overlaying brand logo assets...");
+        // --- Overlay brand logo ---
+        if (savedLogo) {
             var logoImg = new Image();
-            logoImg.src = savedLogoData;
             logoImg.onload = function() {
-                var targetSize = canvas.width * 0.24;
-                var lx = (canvas.width - targetSize) / 2;
-                var ly = (canvas.height - targetSize) / 2;
-
-                ctx.fillStyle = "#FFFFFF";
-                if(typeof ctx.roundRect === "function") {
-                    ctx.beginPath(); ctx.roundRect(lx - 6, ly - 6, targetSize + 12, targetSize + 12, 6); ctx.fill();
-                } else {
-                    ctx.fillRect(lx - 6, ly - 6, targetSize + 12, targetSize + 12);
-                }
-
-                ctx.drawImage(logoImg, lx, ly, targetSize, targetSize);
-                log("✔ Success: Custom branded QR code generated!");
+                var targetW = canvas.width * 0.24;
+                var targetH = targetW * (logoImg.height / logoImg.width);
+                var lx = (canvas.width - targetW) / 2;
+                var ly = (canvas.height - targetH) / 2;
+                // White background behind logo
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.roundRect(lx - 6, ly - 6, targetW + 12, targetH + 12, 6);
+                ctx.fill();
+                ctx.drawImage(logoImg, lx, ly, targetW, targetH);
+                log("Logo overlay complete");
             };
+            logoImg.src = savedLogo;
         } else {
-            log("✔ Success: Custom vector QR code generated (Awaiting logo upload).");
+            log("Ready – upload a logo");
         }
-
     } catch (err) {
-        log("❌ Canvas Draw Failure: " + err.message);
+        log("Error: " + err.message);
     }
 }
 
 function downloadPNG() {
     var canvas = document.getElementById('qrCanvas');
-    if(!canvas) return;
+    if (!canvas) return;
     var link = document.createElement('a');
-    link.download = 'branded-shortlink-qr.png';
+    link.download = 'branded-qr.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
 }
 
 function downloadPDF() {
-    var canvas = document.getElementById('qrCanvas');
-    if(!canvas) return;
-    var imgData = canvas.toDataURL('image/png');
-    
-    if(window.jspdf && window.jspdf.jsPDF) {
-        var pdf = new window.jspdf.jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
-        });
-        pdf.text("Branded Tracking Shortlink Asset", 20, 20);
-        pdf.addImage(imgData, 'PNG', 20, 30, 100, 100);
-        pdf.save('shortlink-qr-manifest.pdf');
+    if (window.jspdf && window.jspdf.jsPDF) {
+        var canvas = document.getElementById('qrCanvas');
+        var pdf = new window.jspdf.jsPDF();
+        var imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', 20, 20, 170, 170);
+        pdf.save('branded-qr.pdf');
     } else {
-        alert("The PDF export module is fully operational inside the main configuration page dashboard panel workspace.");
+        alert("jspdf library not loaded. Please check your internet connection.");
     }
 }
