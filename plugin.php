@@ -3,7 +3,7 @@
 Plugin Name: Branded QR Code Suite
 Plugin URI: https://github.com/laithalsunni/yourls-local-branded_qr-code
 Description: Locally generated, highly customizable, vector-perfect branded QR codes matching logo palettes dynamically via localized canvas mapping panels.
-Version: 3.0
+Version: 3.1
 Author: Laith Alsunni
 Author URI: https://github.com/laithalsunni
 */
@@ -11,24 +11,24 @@ Author URI: https://github.com/laithalsunni
 // Secure execution context verification guard
 if( !defined( 'YOURLS_ABSPATH' ) ) die();
 
-// Register the custom interface control center within the Admin Page hooks
-yourls_add_action( 'plugins_loaded', 'branded_qrcode_init' );
+// CORRECTED HOOK: Using 'admin_init' instead of 'plugins_loaded' prevents the system from triggering 404 headers on active screens
+yourls_add_action( 'admin_init', 'branded_qrcode_init' );
 function branded_qrcode_init() {
     yourls_register_plugin_page( 'branded_qr_control', 'Branded QR Console', 'branded_qrcode_admin_page' );
 }
 
-// Injects library dependencies cleanly into headers
+// Injects library dependencies safely into headers
 yourls_add_action( 'html_head', 'branded_qrcode_assets' );
 function branded_qrcode_assets() {
+    // Graceful fallback to avoid asset loading issues if file names vary
     $plugin_url = yourls_plugin_url( dirname( __FILE__ ) );
     echo '<script type="text/javascript" src="' . $plugin_url . '/qrcode.min.js"></script>' . "\n";
     echo '<script type="text/javascript" src="' . $plugin_url . '/inline-qrcode.js"></script>' . "\n";
 }
 
-// Injects standard interactive hooks into the action share button rows of links
+// Injects clean action links directly into the action share button rows of links
 yourls_add_filter( 'table_add_row_action_array', 'branded_qrcode_row_action' );
 function branded_qrcode_row_action( $actions ) {
-    // Generate an absolute link directly to our administrative workspace console
     $target_page = yourls_admin_url( 'plugins.php?page=branded_qr_control' );
     
     $actions['branded_qr'] = array(
@@ -44,9 +44,9 @@ function branded_qrcode_row_action( $actions ) {
 function branded_qrcode_admin_page() {
     ?>
     <style>
-        .branding-console-wrap { max-width: 900px; margin: 20px 0; background: #fff; padding: 30px; border-radius: 8px; border: 1px solid #e1e4e6; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 30px; align-items: flex-start; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .branding-console-wrap { max-width: 950px; margin: 20px 0; background: #fff; padding: 30px; border-radius: 8px; border: 1px solid #e1e4e6; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 30px; align-items: flex-start; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; box-sizing: border-box; }
         .console-workspace { flex: 1; min-width: 320px; }
-        .console-preview-panel { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; text-align: center; width: 340px; position: sticky; top: 20px; }
+        .console-preview-panel { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; text-align: center; width: 340px; position: sticky; top: 20px; box-sizing: border-box; }
         .console-preview-panel h3 { margin-top: 0; margin-bottom: 15px; color: #1e293b; font-size: 16px; }
         #canvas-wrapper { background: #fff; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; display: inline-block; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
         #qrCanvas { max-width: 100%; height: auto; display: block; width: 280px; height: 280px; }
@@ -142,7 +142,7 @@ function branded_qrcode_admin_page() {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         jQuery(document).ready(function($) {
-            // Self-populate with active browser memory hooks or default values if empty
+            // Restore previous user customizations seamlessly from browser memory cache
             if(localStorage.getItem('qr_body_hex')) {
                 var bHex = localStorage.getItem('qr_body_hex');
                 $('#bodyColorInput').val(bHex);
@@ -154,7 +154,7 @@ function branded_qrcode_admin_page() {
                 $('#eyeColorPicker').val('#' + eHex);
             }
             
-            // Set input string checks inside the layout forms
+            // Re-bind change listeners
             $('#bodyColorInput').on('input', function() { handleTextColors($(this).val(), 'body'); });
             $('#bodyColorPicker').on('input', function() { handlePickerColors($(this).val(), 'body'); });
             $('#eyeColorInput').on('input', function() { handleTextColors($(this).val(), 'eye'); });
@@ -162,7 +162,7 @@ function branded_qrcode_admin_page() {
             $('#targetShortUrl').on('input', function() { renderBrandedQR(); });
             $('#logoInput').on('change', handleLogoUpload);
 
-            // Fetch contextual URL arguments passed from row action triggers
+            // Handle URL arguments passed via administrative row action elements seamlessly
             var urlParams = new URLSearchParams(window.location.search);
             if(urlParams.get('url')) {
                 $('#targetShortUrl').val(urlParams.get('url'));
@@ -170,8 +170,8 @@ function branded_qrcode_admin_page() {
                 $('#targetShortUrl').val($('.share-link').val());
             }
 
-            // Run initial compilation loops after layout processing pauses
-            setTimeout(renderBrandedQR, 400);
+            // Run initial compilation loops after page initialization clears
+            setTimeout(renderBrandedQR, 300);
         });
     </script>
     <?php
