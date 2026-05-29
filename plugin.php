@@ -2,8 +2,8 @@
 /*
 Plugin Name: Branded QR Code Suite
 Plugin URI: https://github.com/laithalsunni/yourls-local-branded_qr-code
-Description: Locally generated, highly customizable, vector-perfect branded QR codes matching logo palettes dynamically via localized canvas mapping panels.
-Version: 3.2
+Description: Locally generated, highly customizable, vector-perfect branded QR codes matching logo palettes dynamically via localized canvas mapping panels with explicit submission loops.
+Version: 3.5
 Author: Laith Alsunni
 Author URI: https://github.com/laithalsunni
 */
@@ -51,7 +51,7 @@ function branded_qrcode_admin_page() {
         .color-input-wrapper { display: flex; align-items: center; gap: 8px; }
         .form-group input[type="text"] { width: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px; text-transform: uppercase; }
         .form-group input[type="color"] { border: none; padding: 0; width: 36px; height: 36px; border-radius: 4px; cursor: pointer; background: none; }
-        .preview-logo-thumb { max-height: 60px; display: block; margin-top: 12px; background: #f4f6f8; padding: 6px; border-radius: 4px; border: 1px solid #ddd; }
+        .preview-logo-thumb { max-height: 60px; display: block; margin-top: 12px; background: #f4f6f8; padding: 6px; border-radius: 4px; border: 1px solid #ddd; margin: 10px auto 0 auto; }
         .toggle-container { margin-top: 15px; background: #f0f4f8; padding: 10px 12px; border-radius: 4px; border: 1px solid #d0dbe5; }
         .toggle-container label { font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #2c3e50; }
         #debug-log { background: #e2f0d9; color: #385723; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px; font-family: monospace; border: 1px solid #c5e0b4; word-break: break-all; text-align: left; }
@@ -61,10 +61,9 @@ function branded_qrcode_admin_page() {
         .btn-primary:hover { background: #005177; }
         .btn-secondary { background: #e2e8f0; color: #334155; }
         .btn-secondary:hover { background: #cbd5e1; }
-        .btn-success { background: #4682b4; color: #fff; padding: 8px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 8px; display: block; width: 100%; text-align: center; font-size: 13px; }
-        .btn-success:hover { background: #2f4f4f; }
+        .btn-action-upload { background: #4682b4; color: #fff; padding: 8px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 8px; display: block; width: 100%; text-align: center; font-size: 13px; transition: background 0.2s; }
+        .btn-action-upload:hover { background: #2f4f4f; }
         .input-url-field { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; box-sizing: border-box; font-family: monospace; }
-        .file-upload-row { display: flex; flex-direction: column; gap: 5px; }
     </style>
 
     <h2>Branded QR Suite Configuration Console</h2>
@@ -104,11 +103,9 @@ function branded_qrcode_admin_page() {
                 <p class="sub-desc">Drop transparent high-resolution identity graphics straight across data grids safely.</p>
                 <div class="form-group">
                     <label>Select Identity Graphic File:</label>
-                    <div class="file-upload-row">
-                        <input type="file" id="logoInput" accept="image/*">
-                        <button type="button" class="btn-success" id="submitLogoBtn">Upload & Process Logo</button>
-                    </div>
-                    <img id="logoPreview" class="preview-logo-thumb" style="display:none;" />
+                    <input type="file" id="logoInput" accept="image/*" style="width:100%; margin-bottom:4px;">
+                    <button type="button" class="btn-action-upload" id="submitLogoBtn">⚙️ Upload & Process Logo</button>
+                    <center><img id="logoPreview" class="preview-logo-thumb" style="display:none;" /></center>
                     <div class="toggle-container">
                         <label><input type="checkbox" id="autoColorToggle"> 🎨 Auto-update colors matching the uploaded logo palette</label>
                     </div>
@@ -130,59 +127,40 @@ function branded_qrcode_admin_page() {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         jQuery(document).ready(function($) {
-            // Restore saved color palettes from memory
+            // Restore saved colors
             if(localStorage.getItem('qr_body_hex')) {
-                var bHex = localStorage.getItem('qr_body_hex');
-                $('#bodyColorInput').val(bHex);
-                $('#bodyColorPicker').val('#' + bHex);
+                var bh = localStorage.getItem('qr_body_hex');
+                $('#bodyColorInput').val(bh);
+                $('#bodyColorPicker').val('#' + bh);
             }
             if(localStorage.getItem('qr_eye_hex')) {
-                var eHex = localStorage.getItem('qr_eye_hex');
-                $('#eyeColorInput').val(eHex);
-                $('#eyeColorPicker').val('#' + eHex);
+                var eh = localStorage.getItem('qr_eye_hex');
+                $('#eyeColorInput').val(eh);
+                $('#eyeColorPicker').val('#' + eh);
             }
-            
-            // Interaction event binds
+
+            // Bind events – all core functions (renderBrandedQR, handleLogoUpload, etc.) are in inline-qrcode.js
             $('#bodyColorInput').on('input', function() { handleTextColors($(this).val(), 'body'); });
             $('#bodyColorPicker').on('input', function() { handlePickerColors($(this).val(), 'body'); });
             $('#eyeColorInput').on('input', function() { handleTextColors($(this).val(), 'eye'); });
             $('#eyeColorPicker').on('input', function() { handlePickerColors($(this).val(), 'eye'); });
             $('#targetShortUrl').on('input', function() { renderBrandedQR(); });
-            
-            // Explicit trigger button bind for processing the selected logo file
-            $('#submitLogoBtn').on('click', function() {
+
+            $('#submitLogoBtn').on('click', function(e) {
+                e.preventDefault();
                 var fileInput = document.getElementById('logoInput');
-                if (fileInput.files && fileInput.files[0]) {
+                if(fileInput.files && fileInput.files[0]) {
                     handleLogoUpload({ target: fileInput });
                 } else {
-                    alert('Please select an image file first before clicking upload.');
+                    alert('Select a logo file first.');
                 }
             });
 
+            // Initial render
             var urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.get('url')) {
-                $('#targetShortUrl').val(urlParams.get('url'));
-            } else if($('.share-link').length > 0) {
-                $('#targetShortUrl').val($('.share-link').val());
-            }
+            if(urlParams.get('url')) $('#targetShortUrl').val(urlParams.get('url'));
             setTimeout(renderBrandedQR, 300);
         });
-        
-        // Mock functions for layout mapping integrity
-        function handleTextColors(val, type) { renderBrandedQR(); }
-        function handlePickerColors(val, type) { renderBrandedQR(); }
-        function handleLogoUpload(e) {
-            var reader = new FileReader();
-            reader.onload = function(event) {
-                jQuery('#logoPreview').attr('src', event.target.result).show();
-                jQuery('#debug-log').text("Status: Logo integrated into structural layer successfully.");
-                renderBrandedQR();
-            }
-            reader.readAsDataURL(e.target.files[0]);
-        }
-        function renderBrandedQR() { /* Engine execution context placeholder */ }
-        function downloadPNG() { /* Save context helper placeholder */ }
-        function downloadPDF() { /* Save context helper placeholder */ }
     </script>
     <?php
 }
