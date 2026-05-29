@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Branded QR Code Production Installer Script for YOURLS (Explicit Logo Trigger)
+# Branded QR Code Production Installer Script for YOURLS (Production Engine)
 # ==============================================================================
 set -e
 
@@ -34,12 +34,11 @@ echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
 
 # 3. Pull production static assets from raw repository paths
 echo "📥 Downloading production-ready script manifests..."
-sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qr-code-svg-local/plugin.php" -o "$PLUGIN_DIR/base_plugin_template.txt"
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qr/js/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/aiaraldea-qr-google-charts-a27ab72/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
 
-# 4. Generate the dashboard layout core and real engine bindings safely
-echo "🩹 Applying operational dashboard routing patches with submit handler..."
+# 4. Write out the production plugin engine directly
+echo "🩹 Applying operational dashboard routing patches with dynamic engine..."
 
 sudo tee "$PLUGIN_DIR/plugin.php" > /dev/null << 'EOF'
 <?php
@@ -47,7 +46,7 @@ sudo tee "$PLUGIN_DIR/plugin.php" > /dev/null << 'EOF'
 Plugin Name: Branded QR Code Suite
 Plugin URI: https://github.com/laithalsunni/yourls-local-branded_qr-code
 Description: Locally generated, highly customizable, vector-perfect branded QR codes matching logo palettes dynamically via localized canvas mapping panels with explicit submission loops.
-Version: 3.5
+Version: 4.0
 Author: Laith Alsunni
 Author URI: https://github.com/laithalsunni
 */
@@ -63,7 +62,6 @@ yourls_add_action( 'html_head', 'branded_qrcode_assets' );
 function branded_qrcode_assets() {
     $plugin_url = yourls_plugin_url( dirname( __FILE__ ) );
     echo '<script type="text/javascript" src="' . $plugin_url . '/qrcode.min.js"></script>' . "\n";
-    echo '<script type="text/javascript" src="' . $plugin_url . '/inline-qrcode.js"></script>' . "\n";
 }
 
 yourls_add_filter( 'table_add_row_action_array', 'branded_qrcode_row_action' );
@@ -173,7 +171,6 @@ function branded_qrcode_admin_page() {
         var uploadedLogoImg = null;
 
         jQuery(document).ready(function($) {
-            // Restore persistent colors from state cache
             if(localStorage.getItem('qr_body_hex')) {
                 var bHex = localStorage.getItem('qr_body_hex');
                 $('#bodyColorInput').val(bHex);
@@ -185,14 +182,13 @@ function branded_qrcode_admin_page() {
                 $('#eyeColorPicker').val('#' + eHex);
             }
 
-            // Bind palette inputs directly to hot re-rendering loops
             $('#bodyColorInput').on('input', function() { handleTextColors($(this).val(), 'body'); });
             $('#bodyColorPicker').on('input', function() { handlePickerColors($(this).val(), 'body'); });
             $('#eyeColorInput').on('input', function() { handleTextColors($(this).val(), 'eye'); });
             $('#eyeColorPicker').on('input', function() { handlePickerColors($(this).val(), 'eye'); });
             $('#targetShortUrl').on('input', function() { renderBrandedQR(); });
 
-            // SUBMIT INTERCEPTOR LOOP: Fires up processing exactly when clicking the action button
+            // SUBMIT LOGO CLICK TRIGGER
             $('#submitLogoBtn').on('click', function(e) {
                 e.preventDefault();
                 var fileInput = document.getElementById('logoInput');
@@ -203,7 +199,6 @@ function branded_qrcode_admin_page() {
                 }
             });
 
-            // Handle shorturl incoming parameter data queries
             var urlParams = new URLSearchParams(window.location.search);
             if(urlParams.get('url')) {
                 $('#targetShortUrl').val(urlParams.get('url'));
@@ -234,7 +229,7 @@ function branded_qrcode_admin_page() {
                 uploadedLogoImg = new Image();
                 uploadedLogoImg.onload = function() {
                     jQuery('#logoPreview').attr('src', event.target.result).show();
-                    jQuery('#debug-log').text("✔ Success: Brand graphic scaled and loaded successfully.");
+                    jQuery('#debug-log').text("✔ Success: Brand graphic integrated successfully.");
                     renderBrandedQR();
                 };
                 uploadedLogoImg.src = event.target.result;
@@ -242,55 +237,70 @@ function branded_qrcode_admin_page() {
             reader.readAsDataURL(file);
         }
 
+        // AUTHENTIC QR MATRIX RENDERING CORE ENGINE
         function renderBrandedQR() {
             var canvas = document.getElementById('qrCanvas');
             if (!canvas) return;
             var ctx = canvas.getContext('2d');
             var textContent = jQuery('#targetShortUrl').val() || 'https://yourls.org';
             var bodyColor = jQuery('#bodyColorPicker').val() || '#000000';
+            var eyeColor = jQuery('#eyeColorPicker').val() || '#000000';
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Build out high quality clean canvas layout background profile
             ctx.fillStyle = '#FFFFFF';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Render basic mockup structural pattern safely
-            ctx.fillStyle = bodyColor;
-            ctx.fillRect(40, 40, 100, 100);
-            ctx.fillRect(360, 40, 100, 100);
-            ctx.fillRect(40, 360, 100, 100);
-            
-            // Generate nested blocks simulation arrays
-            for (var i = 0; i < 25; i++) {
-                for (var j = 0; j < 25; j++) {
-                    if (Math.random() > 0.4) {
-                        ctx.fillRect(40 + (i * 16), 40 + (j * 16), 12, 12);
+
+            try {
+                // Instantiating the authentic high-ecl QRCode structural data model matrix
+                var qr = new QRCodeModel(-1, 3); // Error Correction High Level (H)
+                qr.addData(textContent);
+                qr.make();
+
+                var moduleCount = qr.getModuleCount();
+                var cellSize = Math.floor((canvas.width - 80) / moduleCount);
+                var margin = (canvas.width - (moduleCount * cellSize)) / 2;
+
+                // Loop over the matrix array elements 
+                for (var row = 0; row < moduleCount; row++) {
+                    for (var col = 0; col < moduleCount; col++) {
+                        if (qr.isDark(row, col)) {
+                            
+                            // Distinguish Finder Pattern Eyes from normal body data blocks
+                            if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
+                                ctx.fillStyle = eyeColor;
+                            } else {
+                                ctx.fillStyle = bodyColor;
+                            }
+                            
+                            ctx.fillRect(margin + (col * cellSize), margin + (row * cellSize), cellSize, cellSize);
+                        }
                     }
                 }
-            }
-            
-            // Inject Brand Overlay Image straight to active middle layer canvas coordinates explicitly
-            if (uploadedLogoImg) {
-                var targetSize = 90; 
-                var lx = (canvas.width - targetSize) / 2;
-                var ly = (canvas.height - targetSize) / 2;
-                
-                // White backing mask
-                ctx.fillStyle = '#FFFFFF';
-                ctx.beginPath();
-                ctx.roundRect(lx - 8, ly - 8, targetSize + 16, targetSize + 16, 8);
-                ctx.fill();
-                
-                // Draw graphic asset node
-                ctx.drawImage(uploadedLogoImg, lx, ly, targetSize, targetSize);
+
+                // If logo exists, composite it cleanly centered over the data blocks
+                if (uploadedLogoImg) {
+                    var targetSize = Math.floor(canvas.width * 0.22); 
+                    var lx = (canvas.width - targetSize) / 2;
+                    var ly = (canvas.height - targetSize) / 2;
+                    
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.roundRect(lx - 6, ly - 6, targetSize + 12, targetSize + 12, 6);
+                    ctx.fill();
+                    
+                    ctx.drawImage(uploadedLogoImg, lx, ly, targetSize, targetSize);
+                }
+                jQuery('#debug-log').text("✔ Status: Vector matrix generation finalized.");
+
+            } catch (err) {
+                jQuery('#debug-log').text("❌ Matrix Engine Loop Failure: " + err.message);
             }
         }
 
         function downloadPNG() {
             var canvas = document.getElementById('qrCanvas');
             var link = document.createElement('a');
-            link.download = 'branded-qr-output.png';
+            link.download = 'branded-shortlink-qr.png';
             link.href = canvas.toDataURL('image/png');
             link.click();
         }
@@ -307,7 +317,6 @@ EOF
 echo "🔒 Enforcing standard Linux directory authorization profiles..."
 sudo chown -R www-data:www-data "$PLUGIN_DIR"
 sudo chmod -R 755 "$PLUGIN_DIR"
-sudo rm -f "$PLUGIN_DIR/base_plugin_template.txt"
 
 echo "====================================================="
 echo "🎉 Installer script successfully fixed!"
