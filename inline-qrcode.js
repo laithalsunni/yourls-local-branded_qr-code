@@ -1,6 +1,6 @@
 /**
  * Branded QR Code Suite - Local Coordinate Engine
- * Fixed eye rendering + auto-color extraction
+ * Fixed: numeric error correction level + eye rendering + auto-color
  */
 
 // Polyfill for CanvasRenderingContext2D.roundRect
@@ -8,15 +8,15 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
     CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
         if (w < 2 * r) r = w / 2;
         if (h < 2 * r) r = h / 2;
-        this.moveTo(x+r, y);
-        this.lineTo(x+w-r, y);
-        this.quadraticCurveTo(x+w, y, x+w, y+r);
-        this.lineTo(x+w, y+h-r);
-        this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-        this.lineTo(x+r, y+h);
-        this.quadraticCurveTo(x, y+h, x, y+h-r);
-        this.lineTo(x, y+r);
-        this.quadraticCurveTo(x, y, x+r, y);
+        this.moveTo(x + r, y);
+        this.lineTo(x + w - r, y);
+        this.quadraticCurveTo(x + w, y, x + w, y + r);
+        this.lineTo(x + w, y + h - r);
+        this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        this.lineTo(x + r, y + h);
+        this.quadraticCurveTo(x, y + h, x, y + h - r);
+        this.lineTo(x, y + r);
+        this.quadraticCurveTo(x, y, x + r, y);
         return this;
     };
 }
@@ -123,11 +123,13 @@ function renderBrandedQR() {
 
     try {
         var tempDiv = document.createElement('div');
+        // Use numeric error correction level: 3 = H (highest)
+        var correctLevel = 3;
         var qr = new QRCode(tempDiv, {
             text: targetLink,
             width: 500,
             height: 500,
-            correctLevel: QRCode.CorrectLevel.H
+            correctLevel: correctLevel
         });
         var modules = null;
         if (qr._oQRCode && qr._oQRCode.modules) modules = qr._oQRCode.modules;
