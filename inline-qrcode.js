@@ -118,23 +118,24 @@ function renderBrandedQR() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     try {
-        var qr = new QRCode(parseInt(-1), 3); // TypeNumber -1 implies dynamic auto determination, Level 3 is High Error Density (H)
+        // Instantiate using standard engine format options safely (High Density Error Correction 'H')
+        var qr = new QRCode(-1, 3);
         qr.addData(textPayload);
         qr.make();
         
         var count = qr.getModuleCount();
         var cellSize = canvas.width / count;
         
-        // Draw normal background data matrices
+        // Draw standard data matrices
         for (var row = 0; row < count; row++) {
             for (var col = 0; col < count; col++) {
                 
-                // Skip the alignment Eye Frames mapping tracks explicitly
+                // Skip alignment eye markers explicitly
                 if ((row < 7 && col < 7) || (row < 7 && col >= count - 7) || (row >= count - 7 && col < 7)) {
                     continue; 
                 }
                 
-                // Clear an optimization layout pocket directly in the center for branding logos
+                // Keep the absolute center clear of points to protect logo scans
                 if (row >= Math.floor(count/2) - 3 && row <= Math.floor(count/2) + 3 &&
                     col >= Math.floor(count/2) - 3 && col <= Math.floor(count/2) + 3) {
                     continue;
@@ -147,7 +148,7 @@ function renderBrandedQR() {
             }
         }
         
-        // Render stylized alignment position eye elements safely
+        // Render alignment position loops manually
         var eyePositions = [
             { x: 0, y: 0 },
             { x: (count - 7) * cellSize, y: 0 },
@@ -171,7 +172,7 @@ function renderBrandedQR() {
             }
         });
         
-        // Blit center branding logo assets
+        // Inject brand logo asset if cached locally
         var savedLogoData = localStorage.getItem('qr_logo_base64');
         if (savedLogoData) {
             var logoImg = new Image();
@@ -226,7 +227,7 @@ function downloadPDF() {
         pdf.save('branded-shortlink-qr.pdf');
         log("✔ Print document pipeline finalized successfully.");
     } else {
-        alert("PDF Generation Library is not available. Please verify your connection.");
+        alert("PDF Generation Library is not available yet. Please check your admin configuration setup.");
         log("❌ PDF Generation Library instance verification failed.");
     }
 }
