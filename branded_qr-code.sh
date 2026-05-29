@@ -170,134 +170,41 @@ function branded_qrcode_admin_page() {
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
-        var uploadedLogoImg = null;
-
         jQuery(document).ready(function($) {
-            // Restore persistent colors from state cache
+            // Restore saved colors
             if(localStorage.getItem('qr_body_hex')) {
-                var bHex = localStorage.getItem('qr_body_hex');
-                $('#bodyColorInput').val(bHex);
-                $('#bodyColorPicker').val('#' + bHex);
+                var bh = localStorage.getItem('qr_body_hex');
+                $('#bodyColorInput').val(bh);
+                $('#bodyColorPicker').val('#' + bh);
             }
             if(localStorage.getItem('qr_eye_hex')) {
-                var eHex = localStorage.getItem('qr_eye_hex');
-                $('#eyeColorInput').val(eHex);
-                $('#eyeColorPicker').val('#' + eHex);
+                var eh = localStorage.getItem('qr_eye_hex');
+                $('#eyeColorInput').val(eh);
+                $('#eyeColorPicker').val('#' + eh);
             }
 
-            // Bind palette inputs directly to hot re-rendering loops
+            // Bind events – all core functions (renderBrandedQR, handleLogoUpload, etc.) are in inline-qrcode.js
             $('#bodyColorInput').on('input', function() { handleTextColors($(this).val(), 'body'); });
             $('#bodyColorPicker').on('input', function() { handlePickerColors($(this).val(), 'body'); });
             $('#eyeColorInput').on('input', function() { handleTextColors($(this).val(), 'eye'); });
             $('#eyeColorPicker').on('input', function() { handlePickerColors($(this).val(), 'eye'); });
             $('#targetShortUrl').on('input', function() { renderBrandedQR(); });
 
-            // SUBMIT INTERCEPTOR LOOP: Fires up processing exactly when clicking the action button
             $('#submitLogoBtn').on('click', function(e) {
                 e.preventDefault();
                 var fileInput = document.getElementById('logoInput');
-                if (fileInput.files && fileInput.files[0]) {
-                    processLogoFile(fileInput.files[0]);
+                if(fileInput.files && fileInput.files[0]) {
+                    handleLogoUpload({ target: fileInput });
                 } else {
-                    alert('Select a valid logo asset file first before initiating processor loop.');
+                    alert('Select a logo file first.');
                 }
             });
 
-            // Handle shorturl incoming parameter data queries
+            // Initial render
             var urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.get('url')) {
-                $('#targetShortUrl').val(urlParams.get('url'));
-            }
-            
+            if(urlParams.get('url')) $('#targetShortUrl').val(urlParams.get('url'));
             setTimeout(renderBrandedQR, 300);
         });
-
-        function handleTextColors(hex, target) {
-            hex = hex.replace('#', '');
-            if(hex.length === 6) {
-                jQuery('#' + target + 'ColorPicker').val('#' + hex);
-                localStorage.setItem('qr_' + target + '_hex', hex);
-                renderBrandedQR();
-            }
-        }
-
-        function handlePickerColors(hex, target) {
-            jQuery('#' + target + 'ColorInput').val(hex.replace('#', '').toUpperCase());
-            localStorage.setItem('qr_' + target + '_hex', hex.replace('#', ''));
-            renderBrandedQR();
-        }
-
-        function processLogoFile(file) {
-            var reader = new FileReader();
-            jQuery('#debug-log').text("Status: Processing brand logo matrix data channels...");
-            reader.onload = function(event) {
-                uploadedLogoImg = new Image();
-                uploadedLogoImg.onload = function() {
-                    jQuery('#logoPreview').attr('src', event.target.result).show();
-                    jQuery('#debug-log').text("✔ Success: Brand graphic scaled and loaded successfully.");
-                    renderBrandedQR();
-                };
-                uploadedLogoImg.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function renderBrandedQR() {
-            var canvas = document.getElementById('qrCanvas');
-            if (!canvas) return;
-            var ctx = canvas.getContext('2d');
-            var textContent = jQuery('#targetShortUrl').val() || 'https://yourls.org';
-            var bodyColor = jQuery('#bodyColorPicker').val() || '#000000';
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Build out high quality clean canvas layout background profile
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Render basic mockup structural pattern safely
-            ctx.fillStyle = bodyColor;
-            ctx.fillRect(40, 40, 100, 100);
-            ctx.fillRect(360, 40, 100, 100);
-            ctx.fillRect(40, 360, 100, 100);
-            
-            // Generate nested blocks simulation arrays
-            for (var i = 0; i < 25; i++) {
-                for (var j = 0; j < 25; j++) {
-                    if (Math.random() > 0.4) {
-                        ctx.fillRect(40 + (i * 16), 40 + (j * 16), 12, 12);
-                    }
-                }
-            }
-            
-            // Inject Brand Overlay Image straight to active middle layer canvas coordinates explicitly
-            if (uploadedLogoImg) {
-                var targetSize = 90; 
-                var lx = (canvas.width - targetSize) / 2;
-                var ly = (canvas.height - targetSize) / 2;
-                
-                // White backing mask
-                ctx.fillStyle = '#FFFFFF';
-                ctx.beginPath();
-                ctx.roundRect(lx - 8, ly - 8, targetSize + 16, targetSize + 16, 8);
-                ctx.fill();
-                
-                // Draw graphic asset node
-                ctx.drawImage(uploadedLogoImg, lx, ly, targetSize, targetSize);
-            }
-        }
-
-        function downloadPNG() {
-            var canvas = document.getElementById('qrCanvas');
-            var link = document.createElement('a');
-            link.download = 'branded-qr-output.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        }
-
-        function downloadPDF() {
-            alert('PDF Document generation loop initiated.');
-        }
     </script>
     <?php
 }
