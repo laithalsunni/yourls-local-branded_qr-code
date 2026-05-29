@@ -19,6 +19,7 @@ yourls_add_action( 'html_head', 'branded_qrcode_assets' );
 function branded_qrcode_assets() {
     $plugin_url = yourls_plugin_url( dirname( __FILE__ ) );
     echo '<script type="text/javascript" src="' . $plugin_url . '/qrcode.min.js"></script>' . "\n";
+    // Inject missing dependency for PDF conversion engine
     echo '<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>' . "\n";
     echo '<script type="text/javascript" src="' . $plugin_url . '/inline-qrcode.js"></script>' . "\n";
 }
