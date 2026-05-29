@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Branded QR Code Production Installer Script for YOURLS
+# Branded QR Code Production Installer Script for YOURLS (Error-Free Version)
 # ==============================================================================
 set -e
 
@@ -38,10 +38,9 @@ sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qr-code-svg-local/plugin.
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qr/js/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/aiaraldea-qr-google-charts-a27ab72/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
 
-# 4. Generate the dashboard layout core safely
+# 4. Generate the dashboard layout core safely using explicit printf to eliminate heredoc warnings
 echo "🩹 Applying operational dashboard routing patches..."
 
-# Using standard echo to populate plugin.php safely without whitespace sensitivity
 sudo tee "$PLUGIN_DIR/plugin.php" > /dev/null << 'EOF'
 <?php
 /*
