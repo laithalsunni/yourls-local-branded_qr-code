@@ -1,6 +1,6 @@
 /**
  * Branded QR Code Suite - Local Coordinate Engine
- * Fully robust: auto-detects QRCode API, polyfills CorrectLevel if needed
+ * Diagnostic version with detailed logging and fallbacks
  */
 
 // Polyfill for CanvasRenderingContext2D.roundRect
@@ -21,15 +21,19 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
     };
 }
 
-// Ensure QRCode.CorrectLevel exists (for old scripts that might rely on it)
-if (typeof QRCode !== 'undefined' && !QRCode.CorrectLevel) {
-    QRCode.CorrectLevel = { L: 1, M: 0, Q: 3, H: 2 };
+function log(msg, isError) {
+    var logBox = jQuery('#debug-log');
+    if (logBox.length) {
+        logBox.text("Status: " + msg);
+        if (isError) logBox.css('background', '#f8d7da').css('color', '#721c24');
+        else logBox.css('background', '#e2f0d9').css('color', '#385723');
+    }
+    console.log(msg);
 }
 
-function log(msg) {
-    var logBox = jQuery('#debug-log');
-    if (logBox.length) logBox.text("Status: " + msg);
-    console.log(msg);
+// Ensure QRCode.CorrectLevel exists (for safety)
+if (typeof QRCode !== 'undefined' && !QRCode.CorrectLevel) {
+    QRCode.CorrectLevel = { L: 1, M: 0, Q: 3, H: 2 };
 }
 
 function handleTextColors(val, type) {
@@ -109,9 +113,17 @@ function extractColorsFromLogo(base64Img) {
 }
 
 function renderBrandedQR() {
+    log("renderBrandedQR() started");
     var canvas = document.getElementById('qrCanvas');
-    if (!canvas) return;
-    var targetLink = jQuery('#targetShortUrl').val() || window.location.href;
+    if (!canvas) {
+        log("Canvas element not found!", true);
+        return;
+    }
+    var targetLink = jQuery('#targetShortUrl').val();
+    if (!targetLink) {
+        targetLink = window.location.href;
+        log("No target URL, using current page: " + targetLink);
+    }
     var bodyHex = "#" + (jQuery('#bodyColorInput').val() || "000000");
     var eyeHex = "#" + (jQuery('#eyeColorInput').val() || "000000");
     var savedLogo = localStorage.getItem('qr_logo_base64');
@@ -122,47 +134,46 @@ function renderBrandedQR() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (typeof QRCode === 'undefined') {
-        log("QRCode library missing – check that qrcode.min.js loaded");
+        log("QRCode library not loaded – check qrcode.min.js", true);
+        // Draw an error message on canvas
+        ctx.fillStyle = '#000000';
+        ctx.font = '14px sans-serif';
+        ctx.fillText("QRCode library missing", 20, 250);
         return;
     }
 
     try {
-        // === Universal QR Code generation ===
-        var qr, size;
-        // Try modern API (new QRCode(element, options)) first? No, we want matrix.
-        // Standard library: new QRCode(typeNumber, errorCorrectLevel)
-        var errorLevel = 2; // H
-        qr = new QRCode(0, errorLevel);
+        log("Creating QR code with typeNumber=0, errorLevel=2 (H)");
+        var qr = new QRCode(0, 2);
         qr.addData(targetLink);
         qr.make();
-        size = qr.getModuleCount();
-        
+        var size = qr.getModuleCount();
         if (!size || size === 0) throw new Error("Module count is zero");
+        log("QR matrix size: " + size);
         
         var cell = canvas.width / size;
-        log("Drawing " + size + "x" + size + " modules");
-
-        // --- Draw data modules (skip eyes & center area) ---
+        
         var centerStart = Math.floor(size * 0.34);
         var centerEnd = Math.ceil(size * 0.66);
         ctx.fillStyle = bodyHex;
+        var drawnModules = 0;
         for (var row = 0; row < size; row++) {
             for (var col = 0; col < size; col++) {
                 if (!qr.isDark(row, col)) continue;
-                // Skip the three 7x7 eye zones
                 if ((row < 7 && col < 7) ||
                     (row < 7 && col >= size-7) ||
                     (row >= size-7 && col < 7)) continue;
-                // Skip center area where logo will go
                 if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) continue;
-
+                
                 ctx.beginPath();
                 ctx.arc(col * cell + cell/2, row * cell + cell/2, cell * 0.88, 0, 2*Math.PI);
                 ctx.fill();
+                drawnModules++;
             }
         }
+        log("Drawn " + drawnModules + " data modules");
 
-        // --- Draw three position detection eyes (rounded) ---
+        // Draw eyes
         var eyePositions = [
             { x: 0, y: 0 },
             { x: size-7, y: 0 },
@@ -171,24 +182,21 @@ function renderBrandedQR() {
         var eyeSize = 7 * cell;
         eyePositions.forEach(function(pos) {
             var x = pos.x * cell, y = pos.y * cell;
-            // Outer ring
             ctx.fillStyle = eyeHex;
             ctx.beginPath();
             ctx.roundRect(x, y, eyeSize, eyeSize, cell * 1.2);
             ctx.fill();
-            // Inner white ring
             ctx.fillStyle = '#FFFFFF';
             ctx.beginPath();
             ctx.roundRect(x + cell, y + cell, 5*cell, 5*cell, cell * 0.8);
             ctx.fill();
-            // Core pupil
             ctx.fillStyle = bodyHex;
             ctx.beginPath();
             ctx.roundRect(x + 2*cell, y + 2*cell, 3*cell, 3*cell, cell * 0.4);
             ctx.fill();
         });
+        log("Eyes drawn");
 
-        // --- Overlay brand logo ---
         if (savedLogo) {
             var logoImg = new Image();
             logoImg.onload = function() {
@@ -196,7 +204,6 @@ function renderBrandedQR() {
                 var targetH = targetW * (logoImg.height / logoImg.width);
                 var lx = (canvas.width - targetW) / 2;
                 var ly = (canvas.height - targetH) / 2;
-                // White background behind logo
                 ctx.fillStyle = '#FFFFFF';
                 ctx.beginPath();
                 ctx.roundRect(lx - 6, ly - 6, targetW + 12, targetH + 12, 6);
@@ -206,10 +213,15 @@ function renderBrandedQR() {
             };
             logoImg.src = savedLogo;
         } else {
-            log("Ready – upload a logo");
+            log("No logo uploaded");
         }
+        log("QR code rendering finished");
     } catch (err) {
-        log("Error: " + err.message);
+        log("Error: " + err.message, true);
+        // Draw error on canvas
+        ctx.fillStyle = '#000000';
+        ctx.font = '12px monospace';
+        ctx.fillText("QR Error: " + err.message, 20, 250);
     }
 }
 
@@ -233,3 +245,46 @@ function downloadPDF() {
         alert("jspdf library not loaded. Please check your internet connection.");
     }
 }
+
+// Explicit initialization when DOM is ready
+jQuery(document).ready(function($) {
+    log("DOM ready, initializing...");
+    
+    // Restore saved colors
+    if(localStorage.getItem('qr_body_hex')) {
+        var bh = localStorage.getItem('qr_body_hex');
+        $('#bodyColorInput').val(bh);
+        $('#bodyColorPicker').val('#' + bh);
+    }
+    if(localStorage.getItem('qr_eye_hex')) {
+        var eh = localStorage.getItem('qr_eye_hex');
+        $('#eyeColorInput').val(eh);
+        $('#eyeColorPicker').val('#' + eh);
+    }
+
+    // Bind events
+    $('#bodyColorInput').on('input', function() { handleTextColors($(this).val(), 'body'); });
+    $('#bodyColorPicker').on('input', function() { handlePickerColors($(this).val(), 'body'); });
+    $('#eyeColorInput').on('input', function() { handleTextColors($(this).val(), 'eye'); });
+    $('#eyeColorPicker').on('input', function() { handlePickerColors($(this).val(), 'eye'); });
+    $('#targetShortUrl').on('input', function() { renderBrandedQR(); });
+    
+    $('#submitLogoBtn').on('click', function(e) {
+        e.preventDefault();
+        var fileInput = document.getElementById('logoInput');
+        if(fileInput.files && fileInput.files[0]) {
+            handleLogoUpload({ target: fileInput });
+        } else {
+            alert('Select a logo file first.');
+        }
+    });
+
+    var urlParams = new URLSearchParams(window.location.search);
+    if(urlParams.get('url')) $('#targetShortUrl').val(urlParams.get('url'));
+    
+    // Initial render after a short delay to ensure everything is loaded
+    setTimeout(function() {
+        log("Calling initial renderBrandedQR()");
+        renderBrandedQR();
+    }, 500);
+});
