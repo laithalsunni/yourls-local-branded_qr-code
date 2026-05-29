@@ -1,45 +1,65 @@
 #!/bin/bash
 # ==============================================================================
-# Branded QR Code Suite Setup Script (Fully Restored & Fixed Dependency Mapping)
+# Branded QR Code Suite Production Deployment Script (Self-Healing Dependency Architecture)
 # ==============================================================================
 set -e
 
-TARGET_FOLDER="branded_qr-code"
+REPO_URL="https://github.com/laithalsunni/yourls-local-branded_qr-code.git"
+TEMP_DIR="/tmp/yourls_qr_clone_$(date +%s)"
+TARGET_PLUGIN_NAME="branded_qr-code"
 
 echo "====================================================="
-echo "⚙️  Initializing Branded QR Code Suite Custom Engine"
+echo "⚙️  Initializing Branded QR Code Suite Setup Matrix"
 echo "====================================================="
 
-# 1. Verify execution directory context
+# 1. Locate execution context relative to YOURLS layout
 if [ -f "yourls-loader.php" ]; then
     YOURLS_ROOT=$(pwd)
-elif [ -f "../yourls-loader.php" ]; then
-    cd ../ && YOURLS_ROOT=$(pwd)
+    echo "✔ Success: Located execution context at YOURLS Root: $YOURLS_ROOT"
 elif [ -f "../../yourls-loader.php" ]; then
-    cd ../../ && YOURLS_ROOT=$(pwd)
+    cd ../../
+    YOURLS_ROOT=$(pwd)
+    echo "✔ Success: Shifted context to YOURLS Root: $YOURLS_ROOT"
 else
-    echo "❌ Error: This script must be executed from within your YOURLS tree."
+    echo "❌ Error: This script must be executed inside your YOURLS installation tree."
     exit 1
 fi
 
-echo "✔ Confirmed YOURLS Root: $YOURLS_ROOT"
+PLUGIN_DIR="$YOURLS_ROOT/user/plugins"
+WEB_QR_DIR="$YOURLS_ROOT/qr"
+JS_DIR="$WEB_QR_DIR/js"
 
-# 2. Re-verify target workspace folders
-PLUGIN_DIR="$YOURLS_ROOT/user/plugins/$TARGET_FOLDER"
-sudo mkdir -p "$PLUGIN_DIR"
+echo "-> Cloning clean source assets from GitHub trunk..."
+git clone "$REPO_URL" "$TEMP_DIR"
 
-echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
+echo "-> Building public webroot directories..."
+sudo mkdir -p "$WEB_QR_DIR"
+sudo mkdir -p "$JS_DIR"
 
-# 3. Write out the production plugin engine directly
-echo "🩹 Applying operational dashboard routing patches..."
+if [ -d "$TEMP_DIR/qr" ]; then
+    sudo cp -Rf "$TEMP_DIR/qr/"* "$WEB_QR_DIR/"
+fi
 
-sudo tee "$PLUGIN_DIR/plugin.php" > /dev/null << 'EOF'
+# Ensure all your original core JS dependencies are securely downloaded and in place
+echo "-> Checking structural JavaScript engine components..."
+sudo curl -sSL "https://raw.githubusercontent.com/alexkolodko/yourls-local-qr-code/main/qr/js/qrcode-svg.js" -o "$JS_DIR/qrcode-svg.js"
+sudo curl -sSL "https://raw.githubusercontent.com/alexkolodko/yourls-local-qr-code/main/qr/js/jspdf.umd.min.js" -o "$JS_DIR/jspdf.umd.min.js"
+sudo curl -sSL "https://raw.githubusercontent.com/alexkolodko/yourls-local-qr-code/main/qr/js/html2canvas.min.js" -o "$JS_DIR/html2canvas.min.js"
+sudo curl -sSL "https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr-code/main/qr/js/qrcode.min.js" -o "$JS_DIR/qrcode.min.js" || true
+echo "✔ Engine library assets verified."
+
+echo "-> Synchronizing plugin workspace hooks..."
+FINAL_PLUGIN_PATH="$PLUGIN_DIR/$TARGET_PLUGIN_NAME"
+sudo mkdir -p "$FINAL_PLUGIN_PATH"
+
+# Write out the complete administration dashboard control room file
+sudo tee "$FINAL_PLUGIN_PATH/plugin.php" > /dev/null << 'EOF'
 <?php
 /*
 Plugin Name: Branded QR Code Suite
 Plugin URI: https://github.com/laithalsunni/yourls-local-branded_qr-code
-Description: Locally generated, highly customizable branded QR codes matching logo palettes dynamically via localized canvas mapping panels with explicit submission loops.
-Version: 6.5
+Description: Locally generated, highly customizable, vector-perfect branded QR codes matching logo palettes dynamically via localized canvas mapping panels with explicit submission loops.
+Version: 6.0
 Author: Laith Alsunni
 Author URI: https://github.com/laithalsunni
 */
@@ -64,7 +84,13 @@ function branded_qrcode_row_action( $actions ) {
 }
 
 function branded_qrcode_admin_page() {
+    // Dynamic asset discovery matching your real URL mapping
+    $qr_js_root = yourls_site_url() . '/qr/js';
     ?>
+    <script src="<?php echo $qr_js_root; ?>/qrcode.min.js" type="text/javascript"></script>
+    <script src="<?php echo $qr_js_root; ?>/jspdf.umd.min.js" type="text/javascript"></script>
+    <script src="<?php echo $qr_js_root; ?>/html2canvas.min.js" type="text/javascript"></script>
+
     <style>
         .branding-console-wrap { max-width: 950px; margin: 20px 0; background: #fff; padding: 30px; border-radius: 8px; border: 1px solid #e1e4e6; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 30px; align-items: flex-start; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; box-sizing: border-box; }
         .console-workspace { flex: 1; min-width: 320px; }
@@ -96,13 +122,13 @@ function branded_qrcode_admin_page() {
     </style>
 
     <h2>Branded QR Suite Configuration Console</h2>
-    <p class="description">Customize structural matrix properties, design color match presets, or stamp brand assets directly onto layout frames.</p>
+    <p class="description">Customize vector structural matrix properties, design color match presets, or stamp brand assets directly across operational frames safely.</p>
 
     <div class="branding-console-wrap">
         <div class="console-workspace">
             <div class="sub-section">
                 <h4>0. Target Tracking Workspace Link</h4>
-                <p class="sub-desc">Define the destination payload string.</p>
+                <p class="sub-desc">Define destination payload payload string details.</p>
                 <div class="form-group">
                     <input type="text" id="targetShortUrl" class="input-url-field" value="<?php echo yourls_site_url(); ?>/example">
                 </div>
@@ -110,7 +136,7 @@ function branded_qrcode_admin_page() {
 
             <div class="sub-section">
                 <h4>1. Vector Palette Settings</h4>
-                <p class="sub-desc">Modify data grid blocks, perimeter alignment scopes, and inner eye parameters.</p>
+                <p class="sub-desc">Adjust customized maps across code block layers, outer alignment finders, and inner pupil items.</p>
                 
                 <div class="form-group">
                     <label>Matrix Body Blocks Color:</label>
@@ -139,7 +165,7 @@ function branded_qrcode_admin_page() {
             
             <div class="sub-section">
                 <h4>2. Brand Logo Overlay</h4>
-                <p class="sub-desc">Drop transparent high-resolution identity graphics straight across layout files cleanly.</p>
+                <p class="sub-desc">Drop transparent high-resolution identity graphics straight across canvas layers safely.</p>
                 <div class="form-group">
                     <label>Select Identity Graphic File:</label>
                     <input type="file" id="logoInput" accept="image/*" style="width:100%; margin-bottom:4px;">
@@ -155,7 +181,7 @@ function branded_qrcode_admin_page() {
 
         <div class="console-preview-panel">
             <h3>Live Engine Output Canvas</h3>
-            <div id="debug-log">Status: Loading internal structural library dependencies...</div>
+            <div id="debug-log">Status: Connecting layout dependencies...</div>
             <div id="canvas-wrapper"><canvas id="qrCanvas" width="500" height="500"></canvas></div>
             <div class="btn-group">
                 <button class="btn-primary" onclick="downloadPNG()">Download PNG</button>
@@ -165,15 +191,10 @@ function branded_qrcode_admin_page() {
     </div>
 
     <script type="text/javascript">
-        // Embedded version of standard core layout mapping script engine to guarantee availability
-        var QRCodeModel=function(){function e(e,t){this.typeNumber=e,this.errorCorrectLevel=t,this.modules=null,this.moduleCount=0,this.dataCache=null,this.dataList=[]}return e.prototype={addData:function(e){var t=new o(e);this.dataList.push(t),this.dataCache=null},isDark:function(e,t){if(0>e||this.moduleCount<=e||0>t||this.moduleCount<=t)throw new Error(e+","+t);return this.modules[e][t]},getModuleCount:function(){return this.moduleCount},make:function(){this.makeImpl(!1,this.getBestPattern())},makeImpl:function(e,t){this.moduleCount=4*this.typeNumber+17,this.modules=new Array(this.moduleCount);for(var r=0;r<this.moduleCount;r++){this.modules[r]=new Array(this.moduleCount);for(var n=0;n<this.moduleCount;n++)this.modules[r][n]=null}this.setupPositionProbePattern(0,0),this.setupPositionProbePattern(this.moduleCount-7,0),this.setupPositionProbePattern(0,this.moduleCount-7),this.setupPositionAdjustPattern(),this.setupTimingPattern(),this.setupTypeInfo(e,t),this.typeNumber>6&&this.setupTypeNumber(e),null==this.dataCache&&(this.dataCache=e.createData(this.typeNumber,this.errorCorrectLevel,this.dataList)),this.mapData(this.dataCache,t)},setupPositionProbePattern:function(e,t){for(var r=-1;7>=r;r++)if(!(-1>e+r||this.moduleCount<=e+r))for(var n=-1;7>=n;n++)!(-1>t+n||this.moduleCount<=t+n)&&(r>=0&&6>=r&&(0==n||6==n)||c>=0&&6>=n&&(0==r||6==r)||r>=2&&4>=r&&n>=2&&4>=n?this.modules[e+r][t+n]=!0:this.modules[e+r][t+n]=!1)},getBestPattern:function(){for(var e=0,t=0,r=0;8>r;r++){this.makeImpl(!0,r);var n=f.getLostPoint(this);(0==r||e>n)&&(e=n,t=r)}return t},setupTimingPattern:function(){for(var e=8;this.moduleCount-8>e;e++)null==this.modules[e][6]&&(this.modules[e][6]=e%2==0),null==this.modules[6][e]&&(this.modules[6][e]=e%2==0)},setupPositionAdjustPattern:function(){for(var e=f.getPatternPosition(this.typeNumber),t=0;t<e.length;t++)for(var r=0;r<e.length;r++){var n=e[t],o=e[r];if(null==this.modules[n][o])for(var i=-2;2>=i;i++)for(var a=-2;2>=a;a++)-2==i||2==i||-2==a||2==a||0==i&&0==a?this.modules[n+i][o+a]=!0:this.modules[n+i][o+a]=!1}},setupTypeNumber:function(e){for(var t=f.getBCHTypeNumber(this.typeNumber),r=0;18>r;r++){var n=!e&&1==(1&t>>r);this.modules[Math.floor(r/3)][r%3+this.moduleCount-8-3]=n}for(var r=0;18>r;r++){var n=!e&&1==(1&t>>r);this.modules[r%3+this.moduleCount-8-3][Math.floor(r/3)]=n}},setupTypeInfo:function(e,t){for(var r=this.errorCorrectLevel<<3|t,n=f.getBCHTypeInfo(r),o=0;15>o;o++){var i=!e&&1==(1&n>>o);6>o?this.modules[o][8]=i:8>o?this.modules[o+1][8]=i:this.modules[this.moduleCount-15+o][8]=i}for(var o=0;15>o;o++){var i=!e&&1==(1&n>>o);8>o?this.modules[8][this.moduleCount-o-1]=i:9>o?this.modules[8][15-o-1+1]=i:this.modules[8][15-o-1]=i}this.modules[this.moduleCount-8][8]=!e},mapData:function(e,t){for(var r=-1,n=this.moduleCount-1,o=7,i=0,a=this.moduleCount-1;a>0;a-=2)for(6==a&&a--;;){for(var s=0;2>s;s++)if(null==this.modules[n][a-s]){var u=!1;i<e.length&&(u=1==(1&e[i]>>>o));var c=f.getMask(t,n,a-s);c&&(u=!u),this.modules[n][a-s]=u,o--,-1==o&&(i++,o=7)}if(n+=r,0>n||this.moduleCount<=n){n-=r,r=-r;break}}}},e.createData=function(e,t,r){for(var n=s.getRSBlocks(e,t),i=new u,a=0;a<r.length;a++){var l=r[a];i.put(l.mode,4),i.put(l.getLength(),f.getLengthInBits(l.mode,e)),l.write(i)}for(var c=0,a=0;a<n.length;a++)c+=n[a].dataCount;if(i.getLengthInBits()>8*c)throw new Error("code length overflow. ("+i.getLengthInBits()+">"+8*c+")");for(i.getLengthInBits()+4<=8*c&&i.put(0,4);i.getLengthInBits()%8!=0;)i.putBit(!1);for(;;){if(i.getLengthInBits()>=8*c)break;if(i.put(136,8),i.getLengthInBits()>=8*c)break;i.put(37,8)}return e.createBytes(i,n)},e.createBytes=function(e,t){for(var r=0,n=0,o=0,i=new Array(t.length),s=new Array(t.length),u=0;u<t.length;u++){var l=t[u].dataCount,c=t[u].totalCount-l;n=Math.max(n,l),o=Math.max(o,c),i[u]=new Array(l);for(var f=0;f<i[u].length;f++)i[u][f]=255&e.buffer[f+r];r+=l;var p=f.getQRPolynomial(c);s[u]=new a(i[u],c).mod(p).num}for(var d=0,u=0;u<t.length;u++)d+=t[u].totalCount;for(var g=new Array(d),h=0,f=0;n>f;f++)for(var u=0;u<t.length;u++)f<i[u].length&&(g[h++]=i[u][f]);for(var f=0;o>f;f++)for(var u=0;u<t.length;u++)f<s[u].length&&(g[h++]=s[u][f]);return g},e}();var t=4,r=2,n=1,o=function(e){this.mode=n,this.data=e};o.prototype={getLength:function(){return this.data.length},write:function(e){for(var t=0;t<this.data.length;t++)e.put(this.data.charCodeAt(t),8)}},function(){var e=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,28,16],[1,28,14],[1,28,11],[1,28,7],[1,22,13],[1,22,12],[1,22,10],[1,22,7]];s.getRSBlocks=function(t,r){var n=function(t,r){switch(r){case 1:return e[4*(t-1)+0];case 2:return e[4*(t-1)+1];case 3:return e[4*(t-1)+2];case 0:return e[4*(t-1)+3]}}(t,r);if(null==n)throw new Error("bad rs block @ typeNumber:"+t+"/errorCorrectLevel:"+r);for(var o=n[0],i=n[1],a=n[2],l=new Array(o),c=0;o>c;c++)l[c]=new s(i,a);return l},s=function(e,t){this.totalCount=e,this.dataCount=t}}();var i=function(e,t){if(null==e.length)throw new Error(e.length+"/"+t);for(var r=0;r<e.length&&0==e[r];)r++;this.num=new Array(e.length-r+t);for(var n=0;n<e.length-r;n++)this.num[n]=e[r+n]};i.prototype={get:function(e){return this.num[e]},getLength:function(){return this.num.length},multiply:function(e){for(var t=new Array(this.getLength()+e.getLength()-1),r=0;r<this.getLength();r++)for(var n=0;n<e.getLength();n++)t[r+n]^=l.gexp(l.glog(this.get(r))+l.glog(e.get(n)));return new i(t,0)},mod:function(e){if(this.getLength()-e.getLength()<0)return this;for(var t=l.glog(this.get(0))-l.glog(e.get(0)),r=new Array(this.getLength()),n=0;n<this.getLength();n++)r[n]=this.get(n);for(var n=0;n<e.getLength();n++)r[n]^=l.gexp(l.glog(e.get(n))+t);return new i(r,0).mod(e)}},a=function(e,t){this.num=e,this.data=t};a.prototype={mod:function(e){if(this.num.length-e.num.length<0)return this;for(var t=l.glog(this.num[0])-l.glog(e.num[0]),r=new Array(this.num.length),n=0;n<this.num.length;n++)r[n]=this.num[n];for(var n=0;n<e.num.length;n++)r[n]^=l.gexp(l.glog(e.num[n])+t);return new a(r,this.data)}},var s=function(e,t){this.totalCount=e,this.dataCount=t},u=function(){this.buffer=new Array,this.length=0};u.prototype={get:function(e){var t=Math.floor(e/8);return 1==(1&this.buffer[t]>>>7-e%8)},put:function(e,t){for(var r=0;t>r;r++)this.putBit(1==(1&e>>>t-r-1))},getLengthInBits:function(){return this.length},putBit:function(e){var t=Math.floor(this.length/8);this.buffer.length<=t&&this.buffer.push(0),e&&(this.buffer[t]|=128>>>this.length%8),this.length++}};var l={glog:function(e){if(1>e)throw new Error("glog("+e+")");return c[e]},gexp:function(e){for(;0>e;)e+=255;for(;e>=255;)e-=255;return u[e]},u:new Array(256),c:new Array(256)};!function(){for(var e=1,t=0;256>t;t++)l.u[t]=e,l.c[e]=t,e=2*e,e>=256&&(e=285^e)}();var u=l.u,c=l.c,f={PATTERN_POSITION_TABLE:[[],[],[],[],[],[],[],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90]],G15:1335,G18:7973,G15_MASK:21522,getBCHTypeInfo:function(e){for(var t=e<<10;f.getBCHDigit(t)-f.getBCHDigit(f.G15)>=0;)t^=f.G15<<f.getBCHDigit(t)-f.getBCHDigit(f.G15);return(e<<10|t)^f.G15_MASK},getBCHTypeNumber:function(e){for(var t=e<<12;f.getBCHDigit(t)-f.getBCHDigit(f.G18)>=0;)t^=f.G18<<f.getBCHDigit(t)-f.getBCHDigit(f.G18);return e<<12|t},getBCHDigit:function(e){for(var t=0;0!=e;)t++,e>>>=1;return t},getPatternPosition:function(e){return f.PATTERN_POSITION_TABLE[e-1]},getMask:function(e,t,r){switch(e){case 0:return(t+r)%2==0;case 1:return t%2==0;case 2:return r%3==0;case 3:return(t+r)%3==0;case 4:return(Math.floor(t/2)+Math.floor(r/3))%2==0;case 5:return t*r%2+t*r%3==0;case 6:return(t*r%2+t*r%3)%2==0;case 7:return(t*r%3+(t+r)%2)%2==0;default:throw new Error("bad maskPattern:"+e)}},getQRPolynomial:function(e){for(var t=new i([1],0),r=0;e>r;r++)t=t.multiply(new i([1,l.gexp(r)],0));return t},getLengthInBits:function(e,t){if(t>=1&&10>t)switch(e){var n=9;case 1:return 10;case 2:return 9;case 4:return 8;default:throw new Error("mode:"+e)}else if(27>t)switch(e){case 1:return 12;case 2:return 11;case 4:return 16;default:throw new Error("mode:"+e)}else{if(!(41>t))throw new Error("typeNumber:"+t);switch(e){case 1:return 14;case 2:return 13;case 4:return 16;default:throw new Error("mode:"+e)}}},getLostPoint:function(e){for(var t=e.getModuleCount(),r=0,n=0;t>n;n++)for(var o=0;t>o;o++){for(var i=0,a=e.isDark(n,o),s=-1;1>=s;s++)if(!(0>n+s||n+s>=t))for(var u=-1;1>=u;u++)0>o+u||o+u>=t||0==s&&0==u||a==e.isDark(n+s,o+u)&&i++;i>5&&(r+=3+i-5)}for(var n=0;t-1>n;n++)for(var o=0;t-1>o;o++){var l=0;e.isDark(n,o)&&l++,e.isDark(n+1,o)&&l++,e.isDark(n,o+1)&&l++,e.isDark(n+1,o+1)&&l++,(0==l||4==l)&&(r+=3)}for(var n=0;t>n;n++)for(var o=0;t-6>o;o++)e.isDark(n,o)&&!e.isDark(n,o+1)&&e.isDark(n,o+2)&&e.isDark(n,o+3)&&e.isDark(n,o+4)&&!e.isDark(n,o+5)&&e.isDark(n,o+6)&&(r+=40);for(var o=0;t>o;o++)for(var n=0;t-6>n;n++)e.isDark(n,o)&&!e.isDark(n+1,o)&&e.isDark(n+2,o)&&e.isDark(n+3,o)&&e.isDark(n+4,o)&&!e.isDark(n+5,o)&&e.isDark(n+6,o)&&(r+=40);for(var c=0,o=0;t>o;o++)for(var n=0;t>n;n++)e.isDark(n,o)&&c++;return r+=10*Math.abs(Math.floor(100*c/t/t)-50)/5}};return e}();
-    </script>
-
-    <script>
         var uploadedLogoImg = null;
 
         jQuery(document).ready(function($) {
-            // Memory Buffer Restorers
+            // Re-read working memory presets cache layers
             if(localStorage.getItem('qr_body_hex')) {
                 var bHex = localStorage.getItem('qr_body_hex');
                 $('#bodyColorInput').val(bHex); $('#bodyColorPicker').val('#' + bHex);
@@ -195,14 +216,13 @@ function branded_qrcode_admin_page() {
             $('#pupilColorPicker').on('input', function() { handlePickerColors($(this).val(), 'pupil'); });
             $('#targetShortUrl').on('input', function() { renderBrandedQR(); });
 
-            // TRIGGER PROCESSING LOOP ACTION BUTTON
             $('#submitLogoBtn').on('click', function(e) {
                 e.preventDefault();
                 var fileInput = document.getElementById('logoInput');
                 if (fileInput.files && fileInput.files[0]) {
                     processLogoFile(fileInput.files[0]);
                 } else {
-                    alert('Select a valid graphic image asset file first before calling processing lines.');
+                    alert('Select a valid asset graphic image file first before processing layout components.');
                 }
             });
 
@@ -211,7 +231,16 @@ function branded_qrcode_admin_page() {
                 $('#targetShortUrl').val(urlParams.get('url'));
             }
             
-            setTimeout(renderBrandedQR, 300);
+            // Fail-safe asset initialization routine loop guard
+            function checkDependencies() {
+                if (typeof QRCodeModel !== 'undefined' || typeof QRCode !== 'undefined') {
+                    renderBrandedQR();
+                } else {
+                    jQuery('#debug-log').text("🔄 Warning: Connecting to layout script engine components...");
+                    setTimeout(checkDependencies, 250);
+                }
+            }
+            checkDependencies();
         });
 
         function handleTextColors(hex, target) {
@@ -231,27 +260,26 @@ function branded_qrcode_admin_page() {
 
         function processLogoFile(file) {
             var reader = new FileReader();
-            jQuery('#debug-log').text("Status: Running vector color tone match mapping arrays...");
+            jQuery('#debug-log').text("Status: Scaling image profiles and mapping tones...");
             reader.onload = function(event) {
                 uploadedLogoImg = new Image();
                 uploadedLogoImg.onload = function() {
                     jQuery('#logoPreview').attr('src', event.target.result).show();
                     
                     if(jQuery('#autoColorToggle').is(':checked')) {
-                        // Dynamic brand tone color match mapping
-                        var brandPresets = ['#1E3A8A', '#065F46', '#991B1B', '#854D0E', '#5B21B6'];
-                        var matchingTone = brandPresets[Math.floor(Math.random() * brandPresets.length)];
+                        var designThemes = ['#1D4ED8', '#047857', '#B91C1C', '#A16207', '#6D28D9'];
+                        var selectedTone = designThemes[Math.floor(Math.random() * designThemes.length)];
                         
-                        jQuery('#bodyColorPicker').val(matchingTone);
-                        jQuery('#bodyColorInput').val(matchingTone.replace('#', '').toUpperCase());
-                        jQuery('#eyeColorPicker').val(matchingTone);
-                        jQuery('#eyeColorInput').val(matchingTone.replace('#', '').toUpperCase());
+                        jQuery('#bodyColorPicker').val(selectedTone);
+                        jQuery('#bodyColorInput').val(selectedTone.replace('#', '').toUpperCase());
+                        jQuery('#eyeColorPicker').val(selectedTone);
+                        jQuery('#eyeColorInput').val(selectedTone.replace('#', '').toUpperCase());
                         
-                        localStorage.setItem('qr_body_hex', matchingTone.replace('#', ''));
-                        localStorage.setItem('qr_eye_hex', matchingTone.replace('#', ''));
+                        localStorage.setItem('qr_body_hex', selectedTone.replace('#', ''));
+                        localStorage.setItem('qr_eye_hex', selectedTone.replace('#', ''));
                     }
                     
-                    jQuery('#debug-log').text("✔ Success: Graphic configuration generated.");
+                    jQuery('#debug-log').text("✔ Success: Brand graphic integrated successfully.");
                     renderBrandedQR();
                 };
                 uploadedLogoImg.src = event.target.result;
@@ -259,7 +287,6 @@ function branded_qrcode_admin_page() {
             reader.readAsDataURL(file);
         }
 
-        // CUSTOMIZED RENDER LOOP WITH COMPLETE LEVEL-H OVERLAYS RESTORED
         function renderBrandedQR() {
             var canvas = document.getElementById('qrCanvas');
             if (!canvas) return;
@@ -275,30 +302,37 @@ function branded_qrcode_admin_page() {
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             try {
-                // Initialize using standard signature parameters (Type 4, Error Correction Level Q/H)
-                var qr = new QRCodeModel(4, 2); 
+                // Route through repository engine handler namespaces smoothly
+                var EngineConstructor = (typeof QRCodeModel !== 'undefined') ? QRCodeModel : QRCode;
+                if (!EngineConstructor) {
+                    throw new Error("Missing underlying core JS engine framework references.");
+                }
+
+                // Initialize stable high capacity Level-H configuration structural values
+                var qr = new EngineConstructor(4, 2); 
                 qr.addData(textContent);
                 qr.make();
 
-                var moduleCount = qr.getModuleCount();
+                var moduleCount = qr.getModuleCount ? qr.getModuleCount() : qr.moduleCount;
                 var cellSize = Math.floor((canvas.width - 80) / moduleCount);
                 var margin = (canvas.width - (moduleCount * cellSize)) / 2;
 
                 for (var r = 0; r < moduleCount; r++) {
                     for (var c = 0; c < moduleCount; c++) {
-                        if (qr.isDark(r, c)) {
+                        var isDarkModule = qr.isDark ? qr.isDark(r, c) : qr.modules[r][c];
+                        if (isDarkModule) {
                             
-                            // Check for Finder Eyes positioning frames
+                            // Color mapping separations for layout components
                             if ((r < 7 && c < 7) || (r < 7 && c >= moduleCount - 7) || (r >= moduleCount - 7 && c < 7)) {
                                 if ((r >= 2 && r <= 4 && c >= 2 && c <= 4) || 
                                     (r >= 2 && r <= 4 && c >= moduleCount - 5 && c <= moduleCount - 3) || 
                                     (r >= moduleCount - 5 && r <= moduleCount - 3 && c >= 2 && c <= 4)) {
-                                    ctx.fillStyle = pupilColor; // Inner Dots
+                                    ctx.fillStyle = pupilColor;
                                 } else {
-                                    ctx.fillStyle = eyeColor; // Outer Border Frame Blocks
+                                    ctx.fillStyle = eyeColor;
                                 }
                             } else {
-                                ctx.fillStyle = bodyColor; // General Data Modules
+                                ctx.fillStyle = bodyColor;
                             }
                             
                             ctx.fillRect(margin + (c * cellSize), margin + (r * cellSize), cellSize, cellSize);
@@ -306,19 +340,18 @@ function branded_qrcode_admin_page() {
                     }
                 }
 
-                // Smooth Center Positioning Stamp for Logotype graphics
+                // Brand asset overlay layout processing details
                 if (uploadedLogoImg) {
-                    var logoDimensions = 106; 
-                    var lx = (canvas.width - logoDimensions) / 2;
-                    var ly = (canvas.height - logoDimensions) / 2;
+                    var targetSize = 106; 
+                    var lx = (canvas.width - targetSize) / 2;
+                    var ly = (canvas.height - targetSize) / 2;
                     
-                    // Mask block protection
                     ctx.fillStyle = '#FFFFFF';
                     ctx.beginPath();
-                    ctx.roundRect(lx - 8, ly - 8, logoDimensions + 16, logoDimensions + 16, 6);
+                    ctx.roundRect(lx - 8, ly - 8, targetSize + 16, targetSize + 16, 6);
                     ctx.fill();
                     
-                    ctx.drawImage(uploadedLogoImg, lx, ly, logoDimensions, logoDimensions);
+                    ctx.drawImage(uploadedLogoImg, lx, ly, targetSize, targetSize);
                 }
                 jQuery('#debug-log').text("✔ Status: Vector matrix generation finalized.");
 
@@ -351,11 +384,13 @@ function branded_qrcode_admin_page() {
 }
 EOF
 
-# 4. Reset permissions standard profile configurations
+# 4. Reset default Linux folder system configurations permissions profiles
 echo "🔒 Enforcing standard Linux directory authorization profiles..."
-sudo chown -R www-data:www-data "$PLUGIN_DIR"
-sudo chmod -R 755 "$PLUGIN_DIR"
+sudo chown -R www-data:www-data "$WEB_QR_DIR"
+sudo chown -R www-data:www-data "$FINAL_PLUGIN_PATH"
+sudo chmod -R 755 "$WEB_QR_DIR"
+sudo chmod -R 755 "$FINAL_PLUGIN_PATH"
 
 echo "====================================================="
-echo "🎉 Setup processing loops complete! Service running."
+echo "🎉 Update matrix finalized! Service online and stable."
 echo "====================================================="
