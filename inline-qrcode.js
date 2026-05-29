@@ -1,6 +1,6 @@
 /**
  * Branded QR Code Suite - Local Coordinate Engine
- * Fixed: getMatrix() + numeric correctLevel + eye rendering + auto-color
+ * Fixed: correct QRCode library API (typeNumber + errorLevel)
  */
 
 // Polyfill for CanvasRenderingContext2D.roundRect
@@ -75,7 +75,7 @@ function extractColorsFromLogo(base64Img) {
         var colorMap = {};
         for (var i = 0; i < data.length; i += 4) {
             var r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-            if (a < 200) continue; // skip transparent
+            if (a < 200) continue;
             var brightness = (r*299 + g*587 + b*114) / 1000;
             if (brightness < 240 && brightness > 15) {
                 var hex = ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
@@ -122,20 +122,15 @@ function renderBrandedQR() {
     }
 
     try {
-        var tempDiv = document.createElement('div');
-        // Use numeric error correction level: 3 = H (highest)
-        var qr = new QRCode(tempDiv, {
-            text: targetLink,
-            width: 500,
-            height: 500,
-            correctLevel: 3
-        });
+        // --- Correct QR code generation using the library's API ---
+        // TypeNumber = 0 (auto select), ErrorCorrectLevel = 2 (H - high)
+        var qr = new QRCode(0, 2);
+        qr.addData(targetLink);
+        qr.make();
         
-        // Obtain the module matrix using getMatrix()
-        var modules = qr.getMatrix();
-        if (!modules) throw new Error("Cannot extract QR matrix");
+        var size = qr.getModuleCount();
+        if (!size) throw new Error("Cannot extract QR matrix");
         
-        var size = modules.length;
         var cell = canvas.width / size;
         log("Drawing " + size + "x" + size + " modules");
 
@@ -145,7 +140,7 @@ function renderBrandedQR() {
         ctx.fillStyle = bodyHex;
         for (var row = 0; row < size; row++) {
             for (var col = 0; col < size; col++) {
-                if (!modules[row][col]) continue;
+                if (!qr.isDark(row, col)) continue;
                 // Skip the three 7x7 eye zones
                 if ((row < 7 && col < 7) ||
                     (row < 7 && col >= size-7) ||
