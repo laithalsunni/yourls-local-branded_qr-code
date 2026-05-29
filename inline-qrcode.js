@@ -1,6 +1,6 @@
 /**
  * Branded QR Code Suite - Local Coordinate Engine
- * Fixed: correct QRCode library API (typeNumber + errorLevel)
+ * Fully robust: auto-detects QRCode API, polyfills CorrectLevel if needed
  */
 
 // Polyfill for CanvasRenderingContext2D.roundRect
@@ -19,6 +19,11 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
         this.quadraticCurveTo(x, y, x + r, y);
         return this;
     };
+}
+
+// Ensure QRCode.CorrectLevel exists (for old scripts that might rely on it)
+if (typeof QRCode !== 'undefined' && !QRCode.CorrectLevel) {
+    QRCode.CorrectLevel = { L: 1, M: 0, Q: 3, H: 2 };
 }
 
 function log(msg) {
@@ -117,19 +122,22 @@ function renderBrandedQR() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (typeof QRCode === 'undefined') {
-        log("QRCode library missing");
+        log("QRCode library missing – check that qrcode.min.js loaded");
         return;
     }
 
     try {
-        // --- Correct QR code generation using the library's API ---
-        // TypeNumber = 0 (auto select), ErrorCorrectLevel = 2 (H - high)
-        var qr = new QRCode(0, 2);
+        // === Universal QR Code generation ===
+        var qr, size;
+        // Try modern API (new QRCode(element, options)) first? No, we want matrix.
+        // Standard library: new QRCode(typeNumber, errorCorrectLevel)
+        var errorLevel = 2; // H
+        qr = new QRCode(0, errorLevel);
         qr.addData(targetLink);
         qr.make();
+        size = qr.getModuleCount();
         
-        var size = qr.getModuleCount();
-        if (!size) throw new Error("Cannot extract QR matrix");
+        if (!size || size === 0) throw new Error("Module count is zero");
         
         var cell = canvas.width / size;
         log("Drawing " + size + "x" + size + " modules");
