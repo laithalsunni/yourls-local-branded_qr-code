@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Branded QR Code Production Installer Script for YOURLS (Normalized Clean Naming)
+# Server-Side Branded QR Code Suite - Unified Production Installer
 # ==============================================================================
 set -e
 
@@ -8,10 +8,10 @@ REPO_URL="https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr
 TARGET_FOLDER="branded_qr-code"
 
 echo "====================================================="
-echo "⚙️  Initializing Branded QR Code Suite Setup Matrix"
+echo "⚙️  Initializing Server-Side QR Suite Setup Matrix"
 echo "====================================================="
 
-# 1. Verify execution directory context
+# 1. Verify system runtime configuration bounds
 if [ -f "yourls-loader.php" ]; then
     YOURLS_ROOT=$(pwd)
 elif [ -f "../yourls-loader.php" ]; then
@@ -19,31 +19,29 @@ elif [ -f "../yourls-loader.php" ]; then
 elif [ -f "../../yourls-loader.php" ]; then
     cd ../../ && YOURLS_ROOT=$(pwd)
 else
-    echo "❌ Error: This script must be executed from within your YOURLS tree."
+    echo "❌ Error: Deployment runtime context requires a YOURLS root folder node layout."
     exit 1
 fi
 
-echo "✔ Confirmed YOURLS Root: $YOURLS_ROOT"
+echo "✔ Verified YOURLS Application Path: $YOURLS_ROOT"
 
-# 2. Sync target workspace folders cleanly
+# 2. Re-align local plugin file trees
 PLUGIN_DIR="$YOURLS_ROOT/user/plugins/$TARGET_FOLDER"
-sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr_code"
-sudo rm -rf "$PLUGIN_DIR"
-sudo mkdir -p "$PLUGIN_DIR"
+UPLOAD_DIR="$PLUGIN_DIR/uploads"
 
-echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
+echo "📂 Rebuilding target directory routing targets..."
+sudo mkdir -p "$UPLOAD_DIR"
 
-# 3. Pull production static assets directly from your updated files
-echo "📥 Downloading production-ready script manifests..."
-sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
-sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
+# 3. Pull source files directly from master branch configurations
+echo "📥 Syncing raw codebase configurations from source..."
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/plugin.php" -o "$PLUGIN_DIR/plugin.php"
 
-# 4. Enforce proper Linux file authorization ownerships
-echo "🔒 Enforcing standard Linux directory authorization profiles..."
+# 4. Finalize Linux context permissions
+echo "🔒 Restoring folder permission scopes for file generation arrays..."
 sudo chown -R www-data:www-data "$PLUGIN_DIR"
 sudo chmod -R 755 "$PLUGIN_DIR"
+sudo chmod -R 775 "$UPLOAD_DIR"
 
 echo "====================================================="
-echo "🎉 Installer script successfully fixed and deployed!"
+echo "🎉 Server-Side Architecture Suite Installed Successfully!"
 echo "====================================================="
