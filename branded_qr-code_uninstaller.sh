@@ -19,8 +19,7 @@ else
     exit 1
 fi
 
-# Wipe out any variation matching our plugin profile
-echo "-> Sweeping plugin target paths..."
+echo "-> Purging directory mappings..."
 sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr-code"
 sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr_code"
 
