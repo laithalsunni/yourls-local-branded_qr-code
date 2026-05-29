@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Branded QR Code Production Installer Script for YOURLS (Explicit Fixed Naming)
+# Branded QR Code Production Installer Script for YOURLS (Normalized Clean Naming)
 # ==============================================================================
 set -e
 
@@ -25,7 +25,7 @@ fi
 
 echo "✔ Confirmed YOURLS Root: $YOURLS_ROOT"
 
-# 2. Re-verify target workspace folders
+# 2. Sync target workspace folders cleanly
 PLUGIN_DIR="$YOURLS_ROOT/user/plugins/$TARGET_FOLDER"
 sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr_code"
 sudo rm -rf "$PLUGIN_DIR"
@@ -33,13 +33,13 @@ sudo mkdir -p "$PLUGIN_DIR"
 
 echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
 
-# 3. Pull production static assets from raw repository paths
+# 3. Pull production static assets directly from your updated files
 echo "📥 Downloading production-ready script manifests..."
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/plugin.php" -o "$PLUGIN_DIR/plugin.php"
 
-# 4. Reset standard Linux directory profiles
+# 4. Enforce proper Linux file authorization ownerships
 echo "🔒 Enforcing standard Linux directory authorization profiles..."
 sudo chown -R www-data:www-data "$PLUGIN_DIR"
 sudo chmod -R 755 "$PLUGIN_DIR"
