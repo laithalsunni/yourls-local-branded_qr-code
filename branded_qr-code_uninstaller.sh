@@ -6,8 +6,6 @@
 
 set -e
 
-TARGET_PLUGIN_NAME="branded_qr-code"
-
 echo "====================================================="
 echo "🗑️ Starting Clean Uninstallation Sequence"
 echo "====================================================="
@@ -21,17 +19,10 @@ else
     exit 1
 fi
 
-PLUGIN_DIR="$YOURLS_ROOT/user/plugins/$TARGET_PLUGIN_NAME"
-
-# Drop disk assets completely
-if [ -d "$PLUGIN_DIR" ]; then
-    echo "-> Sweeping system plugin file trees..."
-    sudo rm -rf "$PLUGIN_DIR"
-fi
-
-if [ -d "$YOURLS_ROOT/user/plugins/yourls-local-branded_qr-code" ]; then
-    sudo rm -rf "$YOURLS_ROOT/user/plugins/yourls-local-branded_qr-code"
-fi
+# Wipe out any variation matching our plugin profile
+echo "-> Sweeping plugin target paths..."
+sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr-code"
+sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr_code"
 
 echo "====================================================="
 echo "🎉 System uninstalled and wiped cleanly!"
