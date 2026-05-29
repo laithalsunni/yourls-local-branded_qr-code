@@ -1,11 +1,5 @@
 #!/bin/bash
-
-# ==============================================================================
-# Branded QR Code Suite - Clean Uninstaller Script
-# ==============================================================================
-
 set -e
-
 echo "====================================================="
 echo "🗑️ Starting Clean Uninstallation Sequence"
 echo "====================================================="
@@ -19,7 +13,6 @@ else
     exit 1
 fi
 
-echo "-> Purging directory mappings..."
 sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr-code"
 sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr_code"
 
