@@ -1,6 +1,6 @@
 /**
- * Branded QR Code Suite - Core Engine
- * Uses standard QRCode.js API: new QRCode(typeNumber, errorCorrectLevel)
+ * Branded QR Code Suite - Core Engine (Diagnostic)
+ * Supports both standard and alternative QRCode APIs
  */
 
 // Polyfill for roundRect
@@ -27,7 +27,7 @@ function log(msg) {
     console.log(msg);
 }
 
-// Global functions used by plugin.php
+// Global functions
 window.handleTextColors = function(val, type) {
     val = val.replace('#', '');
     if (val.length === 6) {
@@ -128,38 +128,57 @@ window.renderBrandedQR = function() {
         return;
     }
     
+    log("QRCode library found, type: " + typeof QRCode);
+    
     try {
-        // Standard API: new QRCode(typeNumber, errorCorrectLevel)
-        // typeNumber = 0 (auto), errorCorrectLevel = 2 (H)
+        // Attempt 1: Standard API (typeNumber, errorCorrectLevel)
+        log("Creating QRCode with (0, 2)");
         var qr = new QRCode(0, 2);
+        log("QRCode object created, type: " + typeof qr);
+        
+        // Check if addData exists
+        if (typeof qr.addData !== 'function') {
+            throw new Error("QRCode object missing addData method");
+        }
         qr.addData(targetLink);
         qr.make();
+        
+        // Check getModuleCount
+        if (typeof qr.getModuleCount !== 'function') {
+            throw new Error("QRCode object missing getModuleCount method");
+        }
         var size = qr.getModuleCount();
-        if (!size || size === 0) throw new Error("getModuleCount returned " + size);
-        log("Matrix size: " + size);
+        log("getModuleCount returned: " + size);
+        
+        if (!size || size === 0) {
+            // Attempt 2: Some libraries use getModuleCount after make()
+            log("Size is zero, trying alternative: qr.getModuleCount() again?");
+            size = qr.getModuleCount();
+            if (!size) throw new Error("Module count is zero after retry");
+        }
         
         var cell = canvas.width / size;
         var centerStart = Math.floor(size * 0.34);
         var centerEnd = Math.ceil(size * 0.66);
         
         ctx.fillStyle = bodyHex;
+        var drawn = 0;
         for (var row = 0; row < size; row++) {
             for (var col = 0; col < size; col++) {
                 if (!qr.isDark(row, col)) continue;
-                // Skip eye zones
                 if ((row < 7 && col < 7) ||
                     (row < 7 && col >= size-7) ||
                     (row >= size-7 && col < 7)) continue;
-                // Skip center logo area
                 if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) continue;
-                
                 ctx.beginPath();
                 ctx.arc(col * cell + cell/2, row * cell + cell/2, cell * 0.88, 0, 2*Math.PI);
                 ctx.fill();
+                drawn++;
             }
         }
+        log("Drawn " + drawn + " modules");
         
-        // Draw position detection eyes
+        // Draw eyes
         var eyePositions = [
             { x: 0, y: 0 },
             { x: size-7, y: 0 },
@@ -197,8 +216,6 @@ window.renderBrandedQR = function() {
                 log("Logo drawn");
             };
             logoImg.src = savedLogo;
-        } else {
-            log("No logo");
         }
         log("Render complete");
     } catch (err) {
@@ -230,7 +247,7 @@ window.downloadPDF = function() {
     }
 };
 
-// Auto-initialize when DOM ready
+// Initialize when DOM ready
 document.addEventListener('DOMContentLoaded', function() {
     log("DOM ready, setting up...");
     // Restore colors
@@ -255,6 +272,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fileInput.files && fileInput.files[0]) handleLogoUpload(fileInput.files[0]);
         else alert("Select a logo file first.");
     });
-    // Initial render
-    setTimeout(renderBrandedQR, 300);
+    // Initial render after a short delay to ensure QRCode is fully loaded
+    setTimeout(function() {
+        log("Initial render after 300ms");
+        renderBrandedQR();
+    }, 300);
 });
