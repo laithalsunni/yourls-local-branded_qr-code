@@ -1,6 +1,6 @@
 /**
  * Branded QR Code Suite - Local Coordinate Engine
- * Fixed: numeric error correction level + eye rendering + auto-color
+ * Fixed: getMatrix() + numeric correctLevel + eye rendering + auto-color
  */
 
 // Polyfill for CanvasRenderingContext2D.roundRect
@@ -124,17 +124,17 @@ function renderBrandedQR() {
     try {
         var tempDiv = document.createElement('div');
         // Use numeric error correction level: 3 = H (highest)
-        var correctLevel = 3;
         var qr = new QRCode(tempDiv, {
             text: targetLink,
             width: 500,
             height: 500,
-            correctLevel: correctLevel
+            correctLevel: 3
         });
-        var modules = null;
-        if (qr._oQRCode && qr._oQRCode.modules) modules = qr._oQRCode.modules;
+        
+        // Obtain the module matrix using getMatrix()
+        var modules = qr.getMatrix();
         if (!modules) throw new Error("Cannot extract QR matrix");
-
+        
         var size = modules.length;
         var cell = canvas.width / size;
         log("Drawing " + size + "x" + size + " modules");
