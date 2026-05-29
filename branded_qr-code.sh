@@ -4,7 +4,6 @@
 # ==============================================================================
 set -e
 
-# Target repository details
 REPO_URL="https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr-code/main"
 TARGET_FOLDER="branded_qr_code"
 
@@ -12,7 +11,7 @@ echo "====================================================="
 echo "⚙️  Initializing Branded QR Code Suite Setup Matrix"
 echo "====================================================="
 
-# 1. Verify environment context and trace YOURLS root path
+# 1. Verify execution directory context
 if [ -f "yourls-loader.php" ]; then
     YOURLS_ROOT=$(pwd)
 elif [ -f "../yourls-loader.php" ]; then
@@ -26,26 +25,23 @@ fi
 
 echo "✔ Confirmed YOURLS Root: $YOURLS_ROOT"
 
-# 2. Define path matrices and clean legacy variants to prevent overlaps
+# 2. Re-verify target workspace folders
 PLUGIN_DIR="$YOURLS_ROOT/user/plugins/$TARGET_FOLDER"
-
-# Clear out any potential broken hyphenated folders or old code
 sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr-code"
-
-echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
 sudo mkdir -p "$PLUGIN_DIR"
 
-# 3. Pull production script manifests from raw repository sources
-echo "📥 Downloading production-ready script manifests..."
+echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
 
-# Download plugin.php, qrcode.min.js, and inline-qrcode.js from the corrected repo path
+# 3. Pull production static assets from raw repository paths
+echo "📥 Downloading production-ready script manifests..."
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qr-code-svg-local/plugin.php" -o "$PLUGIN_DIR/plugin.php"
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qr/js/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/aiaraldea-qr-google-charts-a27ab72/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
 
-# 4. Inject structural patch into downloaded plugin.php to fix the Alex Kolodko 404 / metadata error
+# 4. Generate the dashboard layout core directly (Fixing the Heredoc boundary issue)
 echo "🩹 Applying operational dashboard routing patches..."
-sudo cat << 'EOF' > /tmp/patched_plugin.php
+
+sudo tee "$PLUGIN_DIR/plugin.php" > /dev/null << 'EOF'
 <?php
 /*
 Plugin Name: Branded QR Code Suite
@@ -129,4 +125,84 @@ function branded_qrcode_admin_page() {
                 <h4>1. Vector Palette Settings</h4>
                 <p class="sub-desc">Adjust color mappings for data grids and eye alignment loops.</p>
                 <div class="form-group">
-                    <label>
+                    <label>Matrix Body & Pupils Color:</label>
+                    <div class="color-input-wrapper">
+                        <input type="color" id="bodyColorPicker" value="#000000">
+                        #<input type="text" id="bodyColorInput" value="000000" maxlength="6">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Outer Eye Frame Ring Color:</label>
+                    <div class="color-input-wrapper">
+                        <input type="color" id="eyeColorPicker" value="#000000">
+                        #<input type="text" id="eyeColorInput" value="000000" maxlength="6">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sub-section">
+                <h4>2. Brand Logo Overlay</h4>
+                <p class="sub-desc">Drop transparent high-resolution identity graphics straight across data grids safely.</p>
+                <div class="form-group">
+                    <label>Select Identity Graphic File:</label>
+                    <input type="file" id="logoInput" accept="image/*">
+                    <img id="logoPreview" class="preview-logo-thumb" style="display:none;" />
+                    <div class="toggle-container">
+                        <label><input type="checkbox" id="autoColorToggle"> 🎨 Auto-update colors matching the uploaded logo palette</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="console-preview-panel">
+            <h3>Live Engine Output Canvas</h3>
+            <div id="debug-log">Status: Awaiting operational loop mapping...</div>
+            <div id="canvas-wrapper"><canvas id="qrCanvas" width="500" height="500"></canvas></div>
+            <div class="btn-group">
+                <button class="btn-primary" onclick="downloadPNG()">Download PNG</button>
+                <button class="btn-secondary" onclick="downloadPDF()">Save PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        jQuery(document).ready(function($) {
+            if(localStorage.getItem('qr_body_hex')) {
+                var bHex = localStorage.getItem('qr_body_hex');
+                $('#bodyColorInput').val(bHex);
+                $('#bodyColorPicker').val('#' + bHex);
+            }
+            if(localStorage.getItem('qr_eye_hex')) {
+                var eHex = localStorage.getItem('qr_eye_hex');
+                $('#eyeColorInput').val(eHex);
+                $('#eyeColorPicker').val('#' + eHex);
+            }
+            $('#bodyColorInput').on('input', function() { handleTextColors($(this).val(), 'body'); });
+            $('#bodyColorPicker').on('input', function() { handlePickerColors($(this).val(), 'body'); });
+            $('#eyeColorInput').on('input', function() { handleTextColors($(this).val(), 'eye'); });
+            $('#eyeColorPicker').on('input', function() { handlePickerColors($(this).val(), 'eye'); });
+            $('#targetShortUrl').on('input', function() { renderBrandedQR(); });
+            $('#logoInput').on('change', handleLogoUpload);
+
+            var urlParams = new URLSearchParams(window.location.search);
+            if(urlParams.get('url')) {
+                $('#targetShortUrl').val(urlParams.get('url'));
+            } else if($('.share-link').length > 0) {
+                $('#targetShortUrl').val($('.share-link').val());
+            }
+            setTimeout(renderBrandedQR, 300);
+        });
+    </script>
+    <?php
+}
+EOF
+
+# 5. Reset standard Linux directory profiles
+echo "🔒 Enforcing standard Linux directory authorization profiles..."
+sudo chown -R www-data:www-data "$PLUGIN_DIR"
+sudo chmod -R 755 "$PLUGIN_DIR"
+
+echo "====================================================="
+echo "🎉 Installer script successfully fixed!"
+echo "====================================================="
