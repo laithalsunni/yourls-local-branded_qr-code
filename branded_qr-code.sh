@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Branded QR Code Production Installer Script for YOURLS (Production Engine)
+# Branded QR Code Production Installer Script for YOURLS (Production Engine v4.2)
 # ==============================================================================
 set -e
 
@@ -35,7 +35,6 @@ echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
 # 3. Pull production static assets from raw repository paths
 echo "📥 Downloading production-ready script manifests..."
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qr/js/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
-sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/aiaraldea-qr-google-charts-a27ab72/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
 
 # 4. Write out the production plugin engine directly
 echo "🩹 Applying operational dashboard routing patches with dynamic engine..."
@@ -46,7 +45,7 @@ sudo tee "$PLUGIN_DIR/plugin.php" > /dev/null << 'EOF'
 Plugin Name: Branded QR Code Suite
 Plugin URI: https://github.com/laithalsunni/yourls-local-branded_qr-code
 Description: Locally generated, highly customizable, vector-perfect branded QR codes matching logo palettes dynamically via localized canvas mapping panels with explicit submission loops.
-Version: 4.0
+Version: 4.2
 Author: Laith Alsunni
 Author URI: https://github.com/laithalsunni
 */
@@ -106,6 +105,7 @@ function branded_qrcode_admin_page() {
         .btn-action-upload { background: #4682b4; color: #fff; padding: 8px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 8px; display: block; width: 100%; text-align: center; font-size: 13px; transition: background 0.2s; }
         .btn-action-upload:hover { background: #2f4f4f; }
         .input-url-field { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; box-sizing: border-box; font-family: monospace; }
+        #hiddenEngineContainer { display: none; }
     </style>
 
     <h2>Branded QR Suite Configuration Console</h2>
@@ -131,13 +131,6 @@ function branded_qrcode_admin_page() {
                         #<input type="text" id="bodyColorInput" value="000000" maxlength="6">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Outer Eye Frame Ring Color:</label>
-                    <div class="color-input-wrapper">
-                        <input type="color" id="eyeColorPicker" value="#000000">
-                        #<input type="text" id="eyeColorInput" value="000000" maxlength="6">
-                    </div>
-                </div>
             </div>
             
             <div class="sub-section">
@@ -148,9 +141,6 @@ function branded_qrcode_admin_page() {
                     <input type="file" id="logoInput" accept="image/*" style="width:100%; margin-bottom:4px;">
                     <button type="button" class="btn-action-upload" id="submitLogoBtn">⚙️ Upload & Process Logo</button>
                     <center><img id="logoPreview" class="preview-logo-thumb" style="display:none;" /></center>
-                    <div class="toggle-container">
-                        <label><input type="checkbox" id="autoColorToggle"> 🎨 Auto-update colors matching the uploaded logo palette</label>
-                    </div>
                 </div>
             </div>
         </div>
@@ -161,34 +151,28 @@ function branded_qrcode_admin_page() {
             <div id="canvas-wrapper"><canvas id="qrCanvas" width="500" height="500"></canvas></div>
             <div class="btn-group">
                 <button class="btn-primary" onclick="downloadPNG()">Download PNG</button>
-                <button class="btn-secondary" onclick="downloadPDF()">Save PDF</button>
             </div>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <div id="hiddenEngineContainer"></div>
+
     <script>
         var uploadedLogoImg = null;
 
         jQuery(document).ready(function($) {
+            // Restore persistent hex color codes if present inside memory buffers
             if(localStorage.getItem('qr_body_hex')) {
                 var bHex = localStorage.getItem('qr_body_hex');
                 $('#bodyColorInput').val(bHex);
                 $('#bodyColorPicker').val('#' + bHex);
             }
-            if(localStorage.getItem('qr_eye_hex')) {
-                var eHex = localStorage.getItem('qr_eye_hex');
-                $('#eyeColorInput').val(eHex);
-                $('#eyeColorPicker').val('#' + eHex);
-            }
 
             $('#bodyColorInput').on('input', function() { handleTextColors($(this).val(), 'body'); });
             $('#bodyColorPicker').on('input', function() { handlePickerColors($(this).val(), 'body'); });
-            $('#eyeColorInput').on('input', function() { handleTextColors($(this).val(), 'eye'); });
-            $('#eyeColorPicker').on('input', function() { handlePickerColors($(this).val(), 'eye'); });
             $('#targetShortUrl').on('input', function() { renderBrandedQR(); });
 
-            // SUBMIT LOGO CLICK TRIGGER
+            // SUBMIT INTERCEPTOR FOR BRAND ASSET PROCESSING
             $('#submitLogoBtn').on('click', function(e) {
                 e.preventDefault();
                 var fileInput = document.getElementById('logoInput');
@@ -204,7 +188,7 @@ function branded_qrcode_admin_page() {
                 $('#targetShortUrl').val(urlParams.get('url'));
             }
             
-            setTimeout(renderBrandedQR, 300);
+            setTimeout(renderBrandedQR, 400);
         });
 
         function handleTextColors(hex, target) {
@@ -224,12 +208,12 @@ function branded_qrcode_admin_page() {
 
         function processLogoFile(file) {
             var reader = new FileReader();
-            jQuery('#debug-log').text("Status: Processing brand logo matrix data channels...");
+            jQuery('#debug-log').text("Status: Compiling brand logo graphic vectors...");
             reader.onload = function(event) {
                 uploadedLogoImg = new Image();
                 uploadedLogoImg.onload = function() {
                     jQuery('#logoPreview').attr('src', event.target.result).show();
-                    jQuery('#debug-log').text("✔ Success: Brand graphic integrated successfully.");
+                    jQuery('#debug-log').text("✔ Success: Brand graphic scaled and loaded successfully.");
                     renderBrandedQR();
                 };
                 uploadedLogoImg.src = event.target.result;
@@ -237,63 +221,62 @@ function branded_qrcode_admin_page() {
             reader.readAsDataURL(file);
         }
 
-        // AUTHENTIC QR MATRIX RENDERING CORE ENGINE
+        // CORRECTED CANVAS RENDERING CONTROLLER ENGINE
         function renderBrandedQR() {
             var canvas = document.getElementById('qrCanvas');
             if (!canvas) return;
             var ctx = canvas.getContext('2d');
             var textContent = jQuery('#targetShortUrl').val() || 'https://yourls.org';
             var bodyColor = jQuery('#bodyColorPicker').val() || '#000000';
-            var eyeColor = jQuery('#eyeColorPicker').val() || '#000000';
             
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+            // 1. Purge hidden scratchpads and build matrix safely via native qrcode.js compiler
+            var container = document.getElementById('hiddenEngineContainer');
+            container.innerHTML = "";
+            
             try {
-                // Instantiating the authentic high-ecl QRCode structural data model matrix
-                var qr = new QRCodeModel(-1, 3); // Error Correction High Level (H)
-                qr.addData(textContent);
-                qr.make();
+                var qrEngine = new QRCode(container, {
+                    text: textContent,
+                    width: 400,
+                    height: 400,
+                    colorDark: bodyColor,
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H // Forced High Level (H) to safeguard matrix blocks
+                });
 
-                var moduleCount = qr.getModuleCount();
-                var cellSize = Math.floor((canvas.width - 80) / moduleCount);
-                var margin = (canvas.width - (moduleCount * cellSize)) / 2;
-
-                // Loop over the matrix array elements 
-                for (var row = 0; row < moduleCount; row++) {
-                    for (var col = 0; col < moduleCount; col++) {
-                        if (qr.isDark(row, col)) {
-                            
-                            // Distinguish Finder Pattern Eyes from normal body data blocks
-                            if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) {
-                                ctx.fillStyle = eyeColor;
-                            } else {
-                                ctx.fillStyle = bodyColor;
-                            }
-                            
-                            ctx.fillRect(margin + (col * cellSize), margin + (row * cellSize), cellSize, cellSize);
-                        }
+                // 2. Extrapolate compilation data from generated image node inside shadow container
+                setTimeout(function() {
+                    var engineImg = container.querySelector('img');
+                    if (!engineImg) {
+                        jQuery('#debug-log').text("⚠️ Processing engine stream syncing...");
+                        return;
                     }
-                }
 
-                // If logo exists, composite it cleanly centered over the data blocks
-                if (uploadedLogoImg) {
-                    var targetSize = Math.floor(canvas.width * 0.22); 
-                    var lx = (canvas.width - targetSize) / 2;
-                    var ly = (canvas.height - targetSize) / 2;
-                    
+                    // 3. Clear canvas and draw structural base elements
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.beginPath();
-                    ctx.roundRect(lx - 6, ly - 6, targetSize + 12, targetSize + 12, 6);
-                    ctx.fill();
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
-                    ctx.drawImage(uploadedLogoImg, lx, ly, targetSize, targetSize);
-                }
-                jQuery('#debug-log').text("✔ Status: Vector matrix generation finalized.");
+                    // Stamp generated underlying matrix onto our visible control panel canvas
+                    ctx.drawImage(engineImg, 40, 40, 420, 420);
+
+                    // 4. Centered compositing overlay for custom company logo file
+                    if (uploadedLogoImg) {
+                        var logoDimensions = 100; 
+                        var lx = (canvas.width - logoDimensions) / 2;
+                        var ly = (canvas.height - logoDimensions) / 2;
+                        
+                        // Protective background safety buffer block over central code rows
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(lx - 6, ly - 6, logoDimensions + 12, logoDimensions + 12);
+                        
+                        // Draw custom image asset node securely
+                        ctx.drawImage(uploadedLogoImg, lx, ly, logoDimensions, logoDimensions);
+                    }
+                    jQuery('#debug-log').text("✔ Status: Vector matrix generation finalized.");
+                }, 50);
 
             } catch (err) {
-                jQuery('#debug-log').text("❌ Matrix Engine Loop Failure: " + err.message);
+                jQuery('#debug-log').text("❌ Matrix Failure: " + err.message);
             }
         }
 
@@ -303,10 +286,6 @@ function branded_qrcode_admin_page() {
             link.download = 'branded-shortlink-qr.png';
             link.href = canvas.toDataURL('image/png');
             link.click();
-        }
-
-        function downloadPDF() {
-            alert('PDF Document generation loop initiated.');
         }
     </script>
     <?php
