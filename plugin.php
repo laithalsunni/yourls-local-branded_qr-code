@@ -2,15 +2,17 @@
 /*
 Plugin Name: Branded QR Code Suite
 Plugin URI: https://github.com/laithalsunni/yourls-local-branded_qr-code
-Description: Server‑side branded QR codes – fully customizable colors + logo overlay.
-Version: 4.0
+Description: Server‑side branded QR codes – custom colors + logo overlay.
+Version: 4.1
 Author: Laith Alsunni
 */
 
 if( !defined( 'YOURLS_ABSPATH' ) ) die();
 
-// Include QR code generator library
-require_once dirname(__FILE__) . '/phpqrcode.php';
+require_once dirname(__FILE__) . '/qrcode.php'; // chillerlan QR library
+
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
 
 yourls_add_action( 'admin_init', 'branded_qrcode_init' );
 function branded_qrcode_init() {
@@ -30,9 +32,9 @@ function branded_qrcode_row_action( $actions ) {
 }
 
 function branded_qrcode_admin_page() {
-    // Handle form submission
     $qr_image = '';
     $error = '';
+    
     if ( isset($_POST['generate_qr']) ) {
         $url = isset($_POST['target_url']) ? trim($_POST['target_url']) : '';
         $body_color = isset($_POST['body_color']) ? ltrim($_POST['body_color'], '#') : '000000';
@@ -41,7 +43,7 @@ function branded_qrcode_admin_page() {
         if ( empty($url) ) {
             $error = 'Please enter a valid URL.';
         } else {
-            // Handle logo upload if provided
+            // Handle logo upload
             $logo_path = null;
             if ( isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK ) {
                 $upload_dir = sys_get_temp_dir();
@@ -50,7 +52,6 @@ function branded_qrcode_admin_page() {
                 move_uploaded_file($_FILES['logo_file']['tmp_name'], $logo_path);
             }
             
-            // Generate the branded QR code as a temporary PNG file
             $output_file = tempnam(sys_get_temp_dir(), 'qr_') . '.png';
             $success = generate_branded_qr($url, $output_file, $body_color, $eye_color, $logo_path);
             
@@ -59,17 +60,16 @@ function branded_qrcode_admin_page() {
                 $qr_image = 'data:image/png;base64,' . $qr_image;
                 unlink($output_file);
             } else {
-                $error = 'Failed to generate QR code. Check server logs.';
+                $error = 'QR generation failed. Check PHP error log.';
             }
             
-            // Cleanup uploaded logo
             if ( $logo_path && file_exists($logo_path) ) {
                 unlink($logo_path);
             }
         }
     }
     
-    // Display admin page
+    // Display admin page (same as before, but with error display)
     ?>
     <style>
         .qr-console-wrap { max-width: 1000px; margin: 20px 0; background: #fff; padding: 30px; border-radius: 8px; border: 1px solid #e1e4e6; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; gap: 30px; flex-wrap: wrap; }
@@ -135,7 +135,7 @@ function branded_qrcode_admin_page() {
     </div>
     
     <script>
-        // Synchronize color picker and text input
+        // Sync color picker and text field
         document.querySelectorAll('input[name="body_color"]').forEach(function(picker) {
             picker.addEventListener('input', function() {
                 document.querySelector('input[name="body_color_text"]').value = this.value.substring(1);
@@ -163,108 +163,63 @@ function branded_qrcode_admin_page() {
 }
 
 /**
- * Generate a branded QR code image file.
- *
- * @param string $data       URL or text to encode
- * @param string $outputFile Path where PNG will be saved
- * @param string $bodyColor  Hex color (without #) for data modules
- * @param string $eyeColor   Hex color for outer frames of position markers
- * @param string|null $logo  Path to logo image file (optional)
- * @return bool              Success
+ * Generate branded QR code using chillerlan/php-qrcode.
  */
 function generate_branded_qr($data, $outputFile, $bodyColor, $eyeColor, $logo = null) {
-    // Use phpqrcode to generate a raw matrix and a base black/white image
-    // We'll generate a high-resolution QR code (say 1000x1000) then recolor.
-    $size = 1000; // pixels
-    $qr = QRcode::getMatrix($data, QR_ECLEVEL_H); // High error correction for logo overlay
+    // Options for the QR code
+    $options = new QROptions([
+        'version'          => 7,               // adjust as needed (1-40)
+        'outputType'       => QRCode::OUTPUT_IMAGE_PNG,
+        'eccLevel'         => QRCode::ECC_H,   // high error correction for logo
+        'scale'            => 8,               // module size in pixels (final image ~ 400-600px)
+        'imageBase64'      => false,
+        'bgColor'          => '#ffffff',
+        'moduleValues'     => [
+            // data modules (the black squares)
+            QRCode::M_DATA         => $bodyColor,
+            // position finder modules (outer ring and inner dot)
+            QRCode::M_FINDER       => $eyeColor,
+            QRCode::M_FINDER_DOT   => $bodyColor,
+        ]
+    ]);
     
-    $moduleCount = $qr->getModuleCount();
-    $cellSize = $size / $moduleCount;
-    
-    // Create a truecolor image
-    $img = imagecreatetruecolor($size, $size);
-    $white = imagecolorallocate($img, 255, 255, 255);
-    imagefill($img, 0, 0, $white);
-    
-    // Allocate colors
-    $body_rgb = hex2rgb($bodyColor);
-    $body_color = imagecolorallocate($img, $body_rgb['r'], $body_rgb['g'], $body_rgb['b']);
-    $eye_rgb = hex2rgb($eyeColor);
-    $eye_color = imagecolorallocate($img, $eye_rgb['r'], $eye_rgb['g'], $eye_rgb['b']);
-    $black = imagecolorallocate($img, 0, 0, 0);
-    $gray = imagecolorallocate($img, 128, 128, 128);
-    
-    // Draw modules
-    for ($row = 0; $row < $moduleCount; $row++) {
-        for ($col = 0; $col < $moduleCount; $col++) {
-            if ($qr->check($row, $col)) {
-                $x1 = $col * $cellSize;
-                $y1 = $row * $cellSize;
-                $x2 = $x1 + $cellSize;
-                $y2 = $y1 + $cellSize;
+    try {
+        $qrOutput = (new QRCode($options))->render($data);
+        // $qrOutput is a PNG binary string. Save to file first.
+        file_put_contents($outputFile, $qrOutput);
+        
+        // If a logo is provided, overlay it using GD
+        if ($logo && file_exists($logo)) {
+            $qrImg = imagecreatefrompng($outputFile);
+            if (!$qrImg) return false;
+            
+            $logoImg = imagecreatefromstring(file_get_contents($logo));
+            if ($logoImg) {
+                $qrW = imagesx($qrImg);
+                $qrH = imagesy($qrImg);
+                $logoW = imagesx($logoImg);
+                $logoH = imagesy($logoImg);
                 
-                // Determine if this module is part of a position marker (finder pattern)
-                $isEye = isInPositionMarker($row, $col, $moduleCount);
-                $color = $isEye ? $eye_color : $body_color;
-                imagefilledrectangle($img, $x1, $y1, $x2, $y2, $color);
+                // Scale logo to 25% of QR size
+                $targetSize = $qrW * 0.25;
+                $dstX = ($qrW - $targetSize) / 2;
+                $dstY = ($qrH - $targetSize) / 2;
+                
+                // White background behind logo (optional, improves contrast)
+                $white = imagecolorallocate($qrImg, 255, 255, 255);
+                imagefilledrectangle($qrImg, $dstX - 5, $dstY - 5, $dstX + $targetSize + 5, $dstY + $targetSize + 5, $white);
+                
+                // Resample logo onto QR
+                imagecopyresampled($qrImg, $logoImg, $dstX, $dstY, 0, 0, $targetSize, $targetSize, $logoW, $logoH);
+                imagedestroy($logoImg);
             }
+            // Save the final image
+            imagepng($qrImg, $outputFile);
+            imagedestroy($qrImg);
         }
+        return true;
+    } catch (Exception $e) {
+        error_log('QR generation error: ' . $e->getMessage());
+        return false;
     }
-    
-    // Overlay logo if provided
-    if ($logo && file_exists($logo)) {
-        $logo_img = imagecreatefromstring(file_get_contents($logo));
-        if ($logo_img) {
-            $logo_w = imagesx($logo_img);
-            $logo_h = imagesy($logo_img);
-            $target_size = $size * 0.25; // logo covers 25% of QR
-            $dst_x = ($size - $target_size) / 2;
-            $dst_y = ($size - $target_size) / 2;
-            
-            // Create a white background circle/square behind logo for contrast
-            $white = imagecolorallocate($img, 255, 255, 255);
-            imagefilledrectangle($img, $dst_x - 8, $dst_y - 8, $dst_x + $target_size + 8, $dst_y + $target_size + 8, $white);
-            
-            // Resample logo
-            imagecopyresampled($img, $logo_img, $dst_x, $dst_y, 0, 0, $target_size, $target_size, $logo_w, $logo_h);
-            imagedestroy($logo_img);
-        }
-    }
-    
-    // Save PNG
-    imagepng($img, $outputFile);
-    imagedestroy($img);
-    return true;
-}
-
-/**
- * Check if a given QR module coordinate lies inside a position marker (finder pattern).
- * Finder patterns are 7x7 blocks at three corners: top-left, top-right, bottom-left.
- */
-function isInPositionMarker($row, $col, $moduleCount) {
-    $markerSize = 7;
-    // Top-left
-    if ($row < $markerSize && $col < $markerSize) return true;
-    // Top-right
-    if ($row < $markerSize && $col >= $moduleCount - $markerSize) return true;
-    // Bottom-left
-    if ($row >= $moduleCount - $markerSize && $col < $markerSize) return true;
-    return false;
-}
-
-/**
- * Convert hex color to RGB.
- */
-function hex2rgb($hex) {
-    $hex = ltrim($hex, '#');
-    if (strlen($hex) == 3) {
-        $r = hexdec(substr($hex, 0, 1) . substr($hex, 0, 1));
-        $g = hexdec(substr($hex, 1, 1) . substr($hex, 1, 1));
-        $b = hexdec(substr($hex, 2, 1) . substr($hex, 2, 1));
-    } else {
-        $r = hexdec(substr($hex, 0, 2));
-        $g = hexdec(substr($hex, 2, 2));
-        $b = hexdec(substr($hex, 4, 2));
-    }
-    return ['r' => $r, 'g' => $g, 'b' => $b];
 }
