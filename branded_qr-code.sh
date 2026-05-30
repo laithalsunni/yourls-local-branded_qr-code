@@ -35,8 +35,8 @@ echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
 # 3. Pull production static assets
 echo "📥 Downloading production-ready script manifests..."
 sudo curl -sSL "$REPO_URL/plugin.php" -o "$PLUGIN_DIR/plugin.php"
-# Use the standard QRCode.js library (supports getModuleCount and isDark)
-sudo curl -sSL "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
+# Use the existing qrcode.min.js from the repository (qrcode-svg)
+sudo curl -sSL "$REPO_URL/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
 sudo curl -sSL "$REPO_URL/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
 
 # 4. Reset standard Linux directory profiles
