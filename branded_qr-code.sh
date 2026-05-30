@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Branded QR Code Production Installer Script for YOURLS (Explicit Logo Trigger)
+# Branded QR Code Production Installer Script for YOURLS
 # ==============================================================================
 set -e
 
@@ -32,11 +32,12 @@ sudo mkdir -p "$PLUGIN_DIR"
 
 echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
 
-# 3. Pull production static assets from raw repository paths
+# 3. Pull production static assets
 echo "📥 Downloading production-ready script manifests..."
-sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/plugin.php" -o "$PLUGIN_DIR/plugin.php"
-sudo curl -H "Cache-Control: no-cache" -sSL "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
-sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
+sudo curl -sSL "$REPO_URL/plugin.php" -o "$PLUGIN_DIR/plugin.php"
+# Use the standard QRCode.js library (supports getModuleCount and isDark)
+sudo curl -sSL "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
+sudo curl -sSL "$REPO_URL/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
 
 # 4. Reset standard Linux directory profiles
 echo "🔒 Enforcing standard Linux directory authorization profiles..."
