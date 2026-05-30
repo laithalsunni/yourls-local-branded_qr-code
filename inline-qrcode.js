@@ -1,7 +1,6 @@
 /**
  * Branded QR Code Suite - Core Engine
- * Uses standard QRCode.js API (typeNumber, errorCorrectLevel)
- * Includes roundRect polyfill, proper eye rendering, and logo color extraction.
+ * Uses element-based QRCode constructor to generate matrix.
  */
 
 // Polyfill for CanvasRenderingContext2D.roundRect
@@ -20,6 +19,11 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
         this.quadraticCurveTo(x, y, x + r, y);
         return this;
     };
+}
+
+// Ensure QRCode.CorrectLevel exists (for older libraries)
+if (typeof QRCode !== 'undefined' && !QRCode.CorrectLevel) {
+    QRCode.CorrectLevel = { L: 1, M: 0, Q: 3, H: 2 };
 }
 
 function log(msg) {
@@ -77,7 +81,7 @@ function extractColorsFromLogo(base64Img) {
         var colorMap = {};
         for (var i = 0; i < data.length; i += 4) {
             var r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-            if (a < 200) continue; // skip transparent
+            if (a < 200) continue;
             var brightness = (r*299 + g*587 + b*114) / 1000;
             if (brightness < 240 && brightness > 15) {
                 var hex = ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
@@ -129,13 +133,35 @@ window.renderBrandedQR = function() {
     }
     
     try {
-        // Standard API: typeNumber = 0 (auto), errorCorrectLevel = 2 (H)
-        var qr = new QRCode(0, 2);
-        qr.addData(targetLink);
-        qr.make();
-        var size = qr.getModuleCount();
-        if (!size || size === 0) throw new Error("Module count is zero");
+        // Create a temporary div to hold the QR code (required by the library)
+        var tempDiv = document.createElement('div');
+        var qr = new QRCode(tempDiv, {
+            text: targetLink,
+            width: canvas.width,
+            height: canvas.height,
+            correctLevel: QRCode.CorrectLevel.H
+        });
         
+        // Extract the matrix from the internal object
+        var modules = null;
+        if (qr._oQRCode && qr._oQRCode.modules) {
+            modules = qr._oQRCode.modules;
+        } else if (qr.modules) {
+            modules = qr.modules;
+        } else if (qr._modules) {
+            modules = qr._modules;
+        } else {
+            // Try calling getMatrix() if available
+            if (typeof qr.getMatrix === 'function') {
+                modules = qr.getMatrix();
+            }
+        }
+        
+        if (!modules) {
+            throw new Error("Cannot extract QR matrix");
+        }
+        
+        var size = modules.length;
         var cell = canvas.width / size;
         var centerStart = Math.floor(size * 0.34);
         var centerEnd = Math.ceil(size * 0.66);
@@ -143,7 +169,7 @@ window.renderBrandedQR = function() {
         ctx.fillStyle = bodyHex;
         for (var row = 0; row < size; row++) {
             for (var col = 0; col < size; col++) {
-                if (!qr.isDark(row, col)) continue;
+                if (!modules[row][col]) continue;
                 // Skip the three 7x7 eye zones
                 if ((row < 7 && col < 7) ||
                     (row < 7 && col >= size-7) ||
