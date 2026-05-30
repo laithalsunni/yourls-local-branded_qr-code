@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Branded QR Code Production Installer Script for YOURLS (Fixed)
+# Branded QR Code Installer (Server-Side Edition)
 # ==============================================================================
 set -e
 
@@ -8,10 +8,10 @@ REPO_URL="https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr
 TARGET_FOLDER="branded_qr_code"
 
 echo "====================================================="
-echo "⚙️  Initializing Branded QR Code Suite Setup Matrix"
+echo "⚙️  Installing Branded QR Code Suite (Server-Side)"
 echo "====================================================="
 
-# 1. Verify execution directory context
+# Locate YOURLS root
 if [ -f "yourls-loader.php" ]; then
     YOURLS_ROOT=$(pwd)
 elif [ -f "../yourls-loader.php" ]; then
@@ -19,31 +19,29 @@ elif [ -f "../yourls-loader.php" ]; then
 elif [ -f "../../yourls-loader.php" ]; then
     cd ../../ && YOURLS_ROOT=$(pwd)
 else
-    echo "❌ Error: This script must be executed from within your YOURLS tree."
+    echo "❌ Error: This script must be run from within your YOURLS tree."
     exit 1
 fi
 
-echo "✔ Confirmed YOURLS Root: $YOURLS_ROOT"
+echo "✔ YOURLS Root: $YOURLS_ROOT"
 
-# 2. Create plugin directory (remove old if exists)
 PLUGIN_DIR="$YOURLS_ROOT/user/plugins/$TARGET_FOLDER"
 sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr-code" 2>/dev/null
 sudo rm -rf "$PLUGIN_DIR" 2>/dev/null
 sudo mkdir -p "$PLUGIN_DIR"
 
-echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
+echo "📂 Creating plugin folder: $PLUGIN_DIR"
 
-# 3. Download production files from GitHub
-echo "📥 Downloading production-ready script manifests..."
+# Download required files
+echo "📥 Downloading server-side components..."
 sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/plugin.php" -o "$PLUGIN_DIR/plugin.php"
-sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
-sudo curl -H "Cache-Control: no-cache" -sSL "$REPO_URL/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
+sudo curl -H "Cache-Control: no-cache" -sSL "https://raw.githubusercontent.com/t0k4rt/phpqrcode/master/phpqrcode.php" -o "$PLUGIN_DIR/phpqrcode.php"
 
-# 4. Set correct permissions
-echo "🔒 Enforcing standard Linux directory authorization profiles..."
+# Set permissions
 sudo chown -R www-data:www-data "$PLUGIN_DIR"
 sudo chmod -R 755 "$PLUGIN_DIR"
 
 echo "====================================================="
-echo "🎉 Installer script successfully fixed!"
+echo "🎉 Installation complete!"
+echo "👉 Activate 'Branded QR Code Suite' in your YOURLS plugin manager."
 echo "====================================================="
