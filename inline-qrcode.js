@@ -1,6 +1,6 @@
 /**
  * Branded QR Code Suite - Core Engine
- * Uses element-based QRCode constructor to generate matrix.
+ * Uses qrcode-svg library: new QRCode({ content, width, height, ecl })
  */
 
 // Polyfill for CanvasRenderingContext2D.roundRect
@@ -19,11 +19,6 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
         this.quadraticCurveTo(x, y, x + r, y);
         return this;
     };
-}
-
-// Ensure QRCode.CorrectLevel exists (for older libraries)
-if (typeof QRCode !== 'undefined' && !QRCode.CorrectLevel) {
-    QRCode.CorrectLevel = { L: 1, M: 0, Q: 3, H: 2 };
 }
 
 function log(msg) {
@@ -114,16 +109,16 @@ window.renderBrandedQR = function() {
     if (!canvas) return;
     var targetLink = document.getElementById('targetShortUrl').value;
     if (!targetLink) targetLink = window.location.href;
-    
+
     var bodyHex = "#" + (document.getElementById('bodyColorInput').value || "000000");
     var eyeHex = "#" + (document.getElementById('eyeColorInput').value || "000000");
     var savedLogo = localStorage.getItem('qr_logo_base64');
-    
+
     var ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     if (typeof QRCode === 'undefined') {
         log("QRCode library missing");
         ctx.fillStyle = '#000';
@@ -131,41 +126,33 @@ window.renderBrandedQR = function() {
         ctx.fillText("QRCode library missing", 20, 250);
         return;
     }
-    
+
     try {
-        // Create a temporary div to hold the QR code (required by the library)
-        var tempDiv = document.createElement('div');
-        var qr = new QRCode(tempDiv, {
-            text: targetLink,
+        // Use the qrcode-svg constructor
+        var qrInstance = new QRCode({
+            content: targetLink,
             width: canvas.width,
             height: canvas.height,
-            correctLevel: QRCode.CorrectLevel.H
+            ecl: "H"   // High error correction
         });
-        
-        // Extract the matrix from the internal object
+
+        // Extract modules – qrcode-svg stores them in qrcode.modules
         var modules = null;
-        if (qr._oQRCode && qr._oQRCode.modules) {
-            modules = qr._oQRCode.modules;
-        } else if (qr.modules) {
-            modules = qr.modules;
-        } else if (qr._modules) {
-            modules = qr._modules;
-        } else {
-            // Try calling getMatrix() if available
-            if (typeof qr.getMatrix === 'function') {
-                modules = qr.getMatrix();
-            }
+        if (qrInstance.qrcode && qrInstance.qrcode.modules) {
+            modules = qrInstance.qrcode.modules;
+        } else if (qrInstance._oQRCode && qrInstance._oQRCode.modules) {
+            modules = qrInstance._oQRCode.modules;
         }
-        
+
         if (!modules) {
             throw new Error("Cannot extract QR matrix");
         }
-        
+
         var size = modules.length;
         var cell = canvas.width / size;
-        var centerStart = Math.floor(size * 0.34);
-        var centerEnd = Math.ceil(size * 0.66);
-        
+        var centerStart = Math.floor(size * 0.36);
+        var centerEnd = Math.ceil(size * 0.64);
+
         ctx.fillStyle = bodyHex;
         for (var row = 0; row < size; row++) {
             for (var col = 0; col < size; col++) {
@@ -176,13 +163,13 @@ window.renderBrandedQR = function() {
                     (row >= size-7 && col < 7)) continue;
                 // Skip center area where logo will go
                 if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) continue;
-                
+
                 ctx.beginPath();
-                ctx.arc(col * cell + cell/2, row * cell + cell/2, cell * 0.88, 0, 2*Math.PI);
+                ctx.arc(col * cell + cell/2, row * cell + cell/2, cell * 0.85, 0, 2 * Math.PI);
                 ctx.fill();
             }
         }
-        
+
         // Draw position detection eyes (rounded)
         var eyePositions = [
             { x: 0, y: 0 },
@@ -195,20 +182,20 @@ window.renderBrandedQR = function() {
             // Outer ring
             ctx.fillStyle = eyeHex;
             ctx.beginPath();
-            ctx.roundRect(x, y, eyeSize, eyeSize, cell * 1.2);
+            ctx.roundRect(x, y, eyeSize, eyeSize, cell * 1.5);
             ctx.fill();
             // Inner white ring
             ctx.fillStyle = '#FFFFFF';
             ctx.beginPath();
-            ctx.roundRect(x + cell, y + cell, 5*cell, 5*cell, cell * 0.8);
+            ctx.roundRect(x + cell, y + cell, 5 * cell, 5 * cell, cell * 0.8);
             ctx.fill();
             // Core pupil
             ctx.fillStyle = bodyHex;
             ctx.beginPath();
-            ctx.roundRect(x + 2*cell, y + 2*cell, 3*cell, 3*cell, cell * 0.4);
+            ctx.roundRect(x + 2 * cell, y + 2 * cell, 3 * cell, 3 * cell, cell * 0.4);
             ctx.fill();
         });
-        
+
         // Overlay brand logo
         if (savedLogo) {
             var logoImg = new Image();
