@@ -1,7 +1,7 @@
 /**
  * Branded QR Code Suite - Core Engine
- * Uses standard QRCode.js API: new QRCode(typeNumber, errorCorrectLevel)
- * Includes roundRect polyfill, eye rendering, and auto-color extraction.
+ * Uses standard QRCode.js API (typeNumber, errorCorrectLevel)
+ * Includes roundRect polyfill, proper eye rendering, and logo color extraction.
  */
 
 // Polyfill for CanvasRenderingContext2D.roundRect
@@ -77,7 +77,7 @@ function extractColorsFromLogo(base64Img) {
         var colorMap = {};
         for (var i = 0; i < data.length; i += 4) {
             var r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-            if (a < 200) continue;
+            if (a < 200) continue; // skip transparent
             var brightness = (r*299 + g*587 + b*114) / 1000;
             if (brightness < 240 && brightness > 15) {
                 var hex = ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
@@ -99,7 +99,7 @@ function extractColorsFromLogo(base64Img) {
             document.getElementById('bodyColorInput').value = sorted[0];
             document.getElementById('bodyColorPicker').value = '#' + sorted[0];
             localStorage.setItem('qr_body_hex', sorted[0]);
-            log("Auto color (only one): " + sorted[0]);
+            log("Auto color (only one dominant): " + sorted[0]);
         }
         renderBrandedQR();
     };
@@ -121,7 +121,7 @@ window.renderBrandedQR = function() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     if (typeof QRCode === 'undefined') {
-        log("QRCode library not loaded!");
+        log("QRCode library missing");
         ctx.fillStyle = '#000';
         ctx.font = '14px sans-serif';
         ctx.fillText("QRCode library missing", 20, 250);
@@ -134,7 +134,7 @@ window.renderBrandedQR = function() {
         qr.addData(targetLink);
         qr.make();
         var size = qr.getModuleCount();
-        if (!size || size === 0) throw new Error("getModuleCount returned " + size);
+        if (!size || size === 0) throw new Error("Module count is zero");
         
         var cell = canvas.width / size;
         var centerStart = Math.floor(size * 0.34);
@@ -183,7 +183,7 @@ window.renderBrandedQR = function() {
             ctx.fill();
         });
         
-        // Logo overlay
+        // Overlay brand logo
         if (savedLogo) {
             var logoImg = new Image();
             logoImg.onload = function() {
@@ -196,11 +196,12 @@ window.renderBrandedQR = function() {
                 ctx.roundRect(lx - 6, ly - 6, targetW + 12, targetH + 12, 6);
                 ctx.fill();
                 ctx.drawImage(logoImg, lx, ly, targetW, targetH);
-                log("Logo drawn");
+                log("Logo overlay complete");
             };
             logoImg.src = savedLogo;
+        } else {
+            log("Ready – upload a logo");
         }
-        log("Render complete");
     } catch (err) {
         log("Error: " + err.message);
         ctx.fillStyle = '#000';
@@ -226,6 +227,6 @@ window.downloadPDF = function() {
         pdf.addImage(imgData, 'PNG', 20, 20, 170, 170);
         pdf.save('branded-qr.pdf');
     } else {
-        alert("jspdf not loaded");
+        alert("jspdf library not loaded. Please check your internet connection.");
     }
 };
