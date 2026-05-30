@@ -1,9 +1,8 @@
 /**
  * Branded QR Code Suite - Core Engine
- * Uses qrcode-svg library: new QRCode({ content, width, height, ecl })
+ * Uses qrcode-svg library (QRCode constructor with object argument)
  */
 
-// Polyfill for CanvasRenderingContext2D.roundRect
 if (!CanvasRenderingContext2D.prototype.roundRect) {
     CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
         if (w < 2 * r) r = w / 2;
@@ -27,7 +26,6 @@ function log(msg) {
     console.log(msg);
 }
 
-// Global functions used by plugin.php
 window.handleTextColors = function(val, type) {
     val = val.replace('#', '');
     if (val.length === 6) {
@@ -105,72 +103,75 @@ function extractColorsFromLogo(base64Img) {
 }
 
 window.renderBrandedQR = function() {
+    log("Accessing verified local engine components...");
     var canvas = document.getElementById('qrCanvas');
     if (!canvas) return;
     var targetLink = document.getElementById('targetShortUrl').value;
     if (!targetLink) targetLink = window.location.href;
-
+    
     var bodyHex = "#" + (document.getElementById('bodyColorInput').value || "000000");
     var eyeHex = "#" + (document.getElementById('eyeColorInput').value || "000000");
     var savedLogo = localStorage.getItem('qr_logo_base64');
-
+    
     var ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    
     if (typeof QRCode === 'undefined') {
-        log("QRCode library missing");
+        log("❌ Local Dependency Error: 'qrcode.min.js' failed to parse correctly.");
         ctx.fillStyle = '#000';
         ctx.font = '14px sans-serif';
         ctx.fillText("QRCode library missing", 20, 250);
         return;
     }
-
+    
     try {
-        // Use the qrcode-svg constructor
+        // Using qrcode-svg library
         var qrInstance = new QRCode({
             content: targetLink,
             width: canvas.width,
             height: canvas.height,
-            ecl: "H"   // High error correction
+            ecl: "H"
         });
-
-        // Extract modules – qrcode-svg stores them in qrcode.modules
+        
         var modules = null;
         if (qrInstance.qrcode && qrInstance.qrcode.modules) {
             modules = qrInstance.qrcode.modules;
         } else if (qrInstance._oQRCode && qrInstance._oQRCode.modules) {
             modules = qrInstance._oQRCode.modules;
         }
-
+        
         if (!modules) {
-            throw new Error("Cannot extract QR matrix");
+            log("❌ Matrix Extraction Error: Structure mapping incompatible.");
+            ctx.fillStyle = '#000';
+            ctx.font = '14px sans-serif';
+            ctx.fillText("Matrix extraction failed", 20, 250);
+            return;
         }
-
+        
         var size = modules.length;
         var cell = canvas.width / size;
+        log("Data matrix compiled successfully (" + size + "x" + size + "). Drawing elements...");
+        
         var centerStart = Math.floor(size * 0.36);
         var centerEnd = Math.ceil(size * 0.64);
-
+        
         ctx.fillStyle = bodyHex;
         for (var row = 0; row < size; row++) {
             for (var col = 0; col < size; col++) {
                 if (!modules[row][col]) continue;
-                // Skip the three 7x7 eye zones
                 if ((row < 7 && col < 7) ||
                     (row < 7 && col >= size-7) ||
                     (row >= size-7 && col < 7)) continue;
-                // Skip center area where logo will go
                 if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) continue;
-
+                
                 ctx.beginPath();
                 ctx.arc(col * cell + cell/2, row * cell + cell/2, cell * 0.85, 0, 2 * Math.PI);
                 ctx.fill();
             }
         }
-
-        // Draw position detection eyes (rounded)
+        
         var eyePositions = [
             { x: 0, y: 0 },
             { x: size-7, y: 0 },
@@ -179,44 +180,43 @@ window.renderBrandedQR = function() {
         var eyeSize = 7 * cell;
         eyePositions.forEach(function(pos) {
             var x = pos.x * cell, y = pos.y * cell;
-            // Outer ring
             ctx.fillStyle = eyeHex;
             ctx.beginPath();
             ctx.roundRect(x, y, eyeSize, eyeSize, cell * 1.5);
             ctx.fill();
-            // Inner white ring
-            ctx.fillStyle = '#FFFFFF';
+            
+            ctx.fillStyle = "#FFFFFF";
             ctx.beginPath();
             ctx.roundRect(x + cell, y + cell, 5 * cell, 5 * cell, cell * 0.8);
             ctx.fill();
-            // Core pupil
+            
             ctx.fillStyle = bodyHex;
             ctx.beginPath();
             ctx.roundRect(x + 2 * cell, y + 2 * cell, 3 * cell, 3 * cell, cell * 0.4);
             ctx.fill();
         });
-
-        // Overlay brand logo
+        
         if (savedLogo) {
+            log("Overlaying brand logo assets...");
             var logoImg = new Image();
             logoImg.onload = function() {
                 var targetW = canvas.width * 0.24;
                 var targetH = targetW * (logoImg.height / logoImg.width);
                 var lx = (canvas.width - targetW) / 2;
                 var ly = (canvas.height - targetH) / 2;
-                ctx.fillStyle = '#FFFFFF';
+                ctx.fillStyle = "#FFFFFF";
                 ctx.beginPath();
                 ctx.roundRect(lx - 6, ly - 6, targetW + 12, targetH + 12, 6);
                 ctx.fill();
                 ctx.drawImage(logoImg, lx, ly, targetW, targetH);
-                log("Logo overlay complete");
+                log("✔ Success: Custom branded QR code generated!");
             };
             logoImg.src = savedLogo;
         } else {
-            log("Ready – upload a logo");
+            log("✔ Success: Custom vector QR code generated (Awaiting logo upload).");
         }
     } catch (err) {
-        log("Error: " + err.message);
+        log("❌ Canvas Draw Failure: " + err.message);
         ctx.fillStyle = '#000';
         ctx.font = '12px monospace';
         ctx.fillText("QR Error: " + err.message, 20, 250);
