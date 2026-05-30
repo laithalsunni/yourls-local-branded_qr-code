@@ -1,6 +1,6 @@
 /**
- * Branded QR Code Suite - Core Engine
- * Uses qrcode-svg library (QRCode constructor with object argument)
+ * Branded QR Code Suite - Diagnostic Engine
+ * Logs QRCode library structure and tries multiple extraction methods.
  */
 
 if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -102,8 +102,85 @@ function extractColorsFromLogo(base64Img) {
     };
 }
 
+function getQrModules(targetLink, canvas) {
+    // First, log the QRCode object to understand its API
+    log("QRCode type: " + typeof QRCode);
+    log("QRCode properties: " + Object.keys(QRCode).join(', '));
+    if (typeof QRCode === 'function') {
+        log("QRCode constructor length: " + QRCode.length);
+    }
+    
+    // Try qrcode-svg style (object argument)
+    try {
+        var qr = new QRCode({
+            content: targetLink,
+            width: canvas.width,
+            height: canvas.height,
+            ecl: "H"
+        });
+        log("Created QRCode with object argument.");
+        // Check various possible module locations
+        if (qr.qrcode && qr.qrcode.modules) {
+            log("Found modules at qr.qrcode.modules");
+            return qr.qrcode.modules;
+        }
+        if (qr._oQRCode && qr._oQRCode.modules) {
+            log("Found modules at qr._oQRCode.modules");
+            return qr._oQRCode.modules;
+        }
+        if (qr.modules) {
+            log("Found modules at qr.modules");
+            return qr.modules;
+        }
+        // Log structure for debugging
+        log("qr object keys: " + Object.keys(qr).join(', '));
+        if (qr.qrcode) log("qr.qrcode keys: " + Object.keys(qr.qrcode).join(', '));
+    } catch(e) {
+        log("Error with object constructor: " + e.message);
+    }
+    
+    // Try standard QRCode.js (typeNumber, errorCorrectLevel)
+    try {
+        if (typeof QRCode.CorrectLevel !== 'undefined') {
+            var qr2 = new QRCode(0, QRCode.CorrectLevel.H);
+            qr2.addData(targetLink);
+            qr2.make();
+            var size = qr2.getModuleCount();
+            if (size > 0) {
+                var modules = [];
+                for (var row = 0; row < size; row++) {
+                    modules[row] = [];
+                    for (var col = 0; col < size; col++) {
+                        modules[row][col] = qr2.isDark(row, col);
+                    }
+                }
+                log("Used standard QRCode.js API, size=" + size);
+                return modules;
+            }
+        }
+    } catch(e) {
+        log("Standard QRCode.js error: " + e.message);
+    }
+    
+    // Try element-based constructor (some libraries)
+    try {
+        var div = document.createElement('div');
+        var qr3 = new QRCode(div, {
+            text: targetLink,
+            width: canvas.width,
+            height: canvas.height,
+            correctLevel: 2
+        });
+        if (qr3._oQRCode && qr3._oQRCode.modules) {
+            log("Found modules via element constructor");
+            return qr3._oQRCode.modules;
+        }
+    } catch(e) {}
+    
+    return null;
+}
+
 window.renderBrandedQR = function() {
-    log("Accessing verified local engine components...");
     var canvas = document.getElementById('qrCanvas');
     if (!canvas) return;
     var targetLink = document.getElementById('targetShortUrl').value;
@@ -119,107 +196,84 @@ window.renderBrandedQR = function() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     if (typeof QRCode === 'undefined') {
-        log("❌ Local Dependency Error: 'qrcode.min.js' failed to parse correctly.");
+        log("QRCode library missing!");
         ctx.fillStyle = '#000';
         ctx.font = '14px sans-serif';
         ctx.fillText("QRCode library missing", 20, 250);
         return;
     }
     
-    try {
-        // Using qrcode-svg library
-        var qrInstance = new QRCode({
-            content: targetLink,
-            width: canvas.width,
-            height: canvas.height,
-            ecl: "H"
-        });
-        
-        var modules = null;
-        if (qrInstance.qrcode && qrInstance.qrcode.modules) {
-            modules = qrInstance.qrcode.modules;
-        } else if (qrInstance._oQRCode && qrInstance._oQRCode.modules) {
-            modules = qrInstance._oQRCode.modules;
+    var modules = getQrModules(targetLink, canvas);
+    
+    if (!modules) {
+        log("Could not extract QR matrix. Check console for details.");
+        ctx.fillStyle = '#000';
+        ctx.font = '14px sans-serif';
+        ctx.fillText("Matrix extraction failed", 20, 250);
+        return;
+    }
+    
+    var size = modules.length;
+    var cell = canvas.width / size;
+    log("Drawing " + size + "x" + size + " matrix");
+    
+    var centerStart = Math.floor(size * 0.36);
+    var centerEnd = Math.ceil(size * 0.64);
+    
+    ctx.fillStyle = bodyHex;
+    for (var row = 0; row < size; row++) {
+        for (var col = 0; col < size; col++) {
+            if (!modules[row][col]) continue;
+            if ((row < 7 && col < 7) ||
+                (row < 7 && col >= size-7) ||
+                (row >= size-7 && col < 7)) continue;
+            if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) continue;
+            
+            ctx.beginPath();
+            ctx.arc(col * cell + cell/2, row * cell + cell/2, cell * 0.85, 0, 2 * Math.PI);
+            ctx.fill();
         }
+    }
+    
+    var eyePositions = [
+        { x: 0, y: 0 },
+        { x: size-7, y: 0 },
+        { x: 0, y: size-7 }
+    ];
+    var eyeSize = 7 * cell;
+    eyePositions.forEach(function(pos) {
+        var x = pos.x * cell, y = pos.y * cell;
+        ctx.fillStyle = eyeHex;
+        ctx.beginPath();
+        ctx.roundRect(x, y, eyeSize, eyeSize, cell * 1.5);
+        ctx.fill();
         
-        if (!modules) {
-            log("❌ Matrix Extraction Error: Structure mapping incompatible.");
-            ctx.fillStyle = '#000';
-            ctx.font = '14px sans-serif';
-            ctx.fillText("Matrix extraction failed", 20, 250);
-            return;
-        }
-        
-        var size = modules.length;
-        var cell = canvas.width / size;
-        log("Data matrix compiled successfully (" + size + "x" + size + "). Drawing elements...");
-        
-        var centerStart = Math.floor(size * 0.36);
-        var centerEnd = Math.ceil(size * 0.64);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.roundRect(x + cell, y + cell, 5 * cell, 5 * cell, cell * 0.8);
+        ctx.fill();
         
         ctx.fillStyle = bodyHex;
-        for (var row = 0; row < size; row++) {
-            for (var col = 0; col < size; col++) {
-                if (!modules[row][col]) continue;
-                if ((row < 7 && col < 7) ||
-                    (row < 7 && col >= size-7) ||
-                    (row >= size-7 && col < 7)) continue;
-                if (row >= centerStart && row < centerEnd && col >= centerStart && col < centerEnd) continue;
-                
-                ctx.beginPath();
-                ctx.arc(col * cell + cell/2, row * cell + cell/2, cell * 0.85, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-        }
-        
-        var eyePositions = [
-            { x: 0, y: 0 },
-            { x: size-7, y: 0 },
-            { x: 0, y: size-7 }
-        ];
-        var eyeSize = 7 * cell;
-        eyePositions.forEach(function(pos) {
-            var x = pos.x * cell, y = pos.y * cell;
-            ctx.fillStyle = eyeHex;
-            ctx.beginPath();
-            ctx.roundRect(x, y, eyeSize, eyeSize, cell * 1.5);
-            ctx.fill();
-            
+        ctx.beginPath();
+        ctx.roundRect(x + 2 * cell, y + 2 * cell, 3 * cell, 3 * cell, cell * 0.4);
+        ctx.fill();
+    });
+    
+    if (savedLogo) {
+        var logoImg = new Image();
+        logoImg.onload = function() {
+            var targetW = canvas.width * 0.24;
+            var targetH = targetW * (logoImg.height / logoImg.width);
+            var lx = (canvas.width - targetW) / 2;
+            var ly = (canvas.height - targetH) / 2;
             ctx.fillStyle = "#FFFFFF";
             ctx.beginPath();
-            ctx.roundRect(x + cell, y + cell, 5 * cell, 5 * cell, cell * 0.8);
+            ctx.roundRect(lx - 6, ly - 6, targetW + 12, targetH + 12, 6);
             ctx.fill();
-            
-            ctx.fillStyle = bodyHex;
-            ctx.beginPath();
-            ctx.roundRect(x + 2 * cell, y + 2 * cell, 3 * cell, 3 * cell, cell * 0.4);
-            ctx.fill();
-        });
-        
-        if (savedLogo) {
-            log("Overlaying brand logo assets...");
-            var logoImg = new Image();
-            logoImg.onload = function() {
-                var targetW = canvas.width * 0.24;
-                var targetH = targetW * (logoImg.height / logoImg.width);
-                var lx = (canvas.width - targetW) / 2;
-                var ly = (canvas.height - targetH) / 2;
-                ctx.fillStyle = "#FFFFFF";
-                ctx.beginPath();
-                ctx.roundRect(lx - 6, ly - 6, targetW + 12, targetH + 12, 6);
-                ctx.fill();
-                ctx.drawImage(logoImg, lx, ly, targetW, targetH);
-                log("✔ Success: Custom branded QR code generated!");
-            };
-            logoImg.src = savedLogo;
-        } else {
-            log("✔ Success: Custom vector QR code generated (Awaiting logo upload).");
-        }
-    } catch (err) {
-        log("❌ Canvas Draw Failure: " + err.message);
-        ctx.fillStyle = '#000';
-        ctx.font = '12px monospace';
-        ctx.fillText("QR Error: " + err.message, 20, 250);
+            ctx.drawImage(logoImg, lx, ly, targetW, targetH);
+            log("Logo drawn");
+        };
+        logoImg.src = savedLogo;
     }
 };
 
@@ -240,6 +294,6 @@ window.downloadPDF = function() {
         pdf.addImage(imgData, 'PNG', 20, 20, 170, 170);
         pdf.save('branded-qr.pdf');
     } else {
-        alert("jspdf library not loaded. Please check your internet connection.");
+        alert("jspdf library not loaded.");
     }
 };
