@@ -1,7 +1,4 @@
 #!/bin/bash
-# ==============================================================================
-# Branded QR Code Production Installer Script for YOURLS
-# ==============================================================================
 set -e
 
 REPO_URL="https://raw.githubusercontent.com/laithalsunni/yourls-local-branded_qr-code/main"
@@ -11,7 +8,6 @@ echo "====================================================="
 echo "⚙️  Initializing Branded QR Code Suite Setup Matrix"
 echo "====================================================="
 
-# 1. Verify execution directory context
 if [ -f "yourls-loader.php" ]; then
     YOURLS_ROOT=$(pwd)
 elif [ -f "../yourls-loader.php" ]; then
@@ -25,21 +21,17 @@ fi
 
 echo "✔ Confirmed YOURLS Root: $YOURLS_ROOT"
 
-# 2. Re-verify target workspace folders
 PLUGIN_DIR="$YOURLS_ROOT/user/plugins/$TARGET_FOLDER"
 sudo rm -rf "$YOURLS_ROOT/user/plugins/branded_qr-code"
 sudo mkdir -p "$PLUGIN_DIR"
 
 echo "📂 Synchronizing Workspace at: $PLUGIN_DIR"
 
-# 3. Pull production static assets
 echo "📥 Downloading production-ready script manifests..."
 sudo curl -sSL "$REPO_URL/plugin.php" -o "$PLUGIN_DIR/plugin.php"
-# Use the existing qrcode.min.js from the repository (qrcode-svg)
 sudo curl -sSL "$REPO_URL/qrcode.min.js" -o "$PLUGIN_DIR/qrcode.min.js"
 sudo curl -sSL "$REPO_URL/inline-qrcode.js" -o "$PLUGIN_DIR/inline-qrcode.js"
 
-# 4. Reset standard Linux directory profiles
 echo "🔒 Enforcing standard Linux directory authorization profiles..."
 sudo chown -R www-data:www-data "$PLUGIN_DIR"
 sudo chmod -R 755 "$PLUGIN_DIR"
